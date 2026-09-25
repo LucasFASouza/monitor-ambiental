@@ -1,0 +1,15 @@
+# Ambiente virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Banco de dados e arquivos auxiliares do SQLite
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Sistema
+.DS_Store

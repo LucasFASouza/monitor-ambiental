@@ -1,0 +1,3 @@
+# Dependências que rodam em qualquer máquina, inclusive no notebook com o
+# sensor simulado.
+Flask>=3.0,<4.0

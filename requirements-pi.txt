@@ -1,0 +1,8 @@
+# Dependências do Raspberry Pi. Incluem o acesso ao GPIO, que não instala
+# (nem faz sentido) fora do Pi.
+#
+#   pip install -r requirements-pi.txt
+-r requirements.txt
+
+Adafruit-Blinka
+adafruit-circuitpython-dht

@@ -1,0 +1,219 @@
+:root {
+  color-scheme: light dark;
+
+  --fundo: #f4f5f7;
+  --superficie: #ffffff;
+  --borda: #e2e5ea;
+  --texto: #1c1f24;
+  --texto-fraco: #6b7280;
+
+  --bom: #1a8f4c;
+  --bom-fundo: #e6f4ec;
+  --atencao: #b4740a;
+  --atencao-fundo: #fdf3e0;
+  --ruim: #c2372c;
+  --ruim-fundo: #fbeceb;
+
+  --grade: #e2e5ea;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #14171c;
+    --superficie: #1c2027;
+    --borda: #2b3038;
+    --texto: #e9ecf1;
+    --texto-fraco: #9aa3af;
+
+    --bom: #4ecb84;
+    --bom-fundo: #16301f;
+    --atencao: #e3a93c;
+    --atencao-fundo: #332713;
+    --ruim: #f0736a;
+    --ruim-fundo: #351a19;
+
+    --grade: #2b3038;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--fundo);
+  color: var(--texto);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+h1, h2 { margin: 0; font-weight: 600; }
+
+.cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: 0 auto 24px;
+}
+
+.cabecalho h1 { font-size: 1.5rem; }
+
+.subtitulo {
+  margin: 4px 0 0;
+  color: var(--texto-fraco);
+  font-size: 0.875rem;
+}
+
+.estado { text-align: right; }
+
+.indicador {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--borda);
+  color: var(--texto-fraco);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.indicador.ativo  { background: var(--bom-fundo);  color: var(--bom); }
+.indicador.parado { background: var(--ruim-fundo); color: var(--ruim); }
+
+.atualizacao {
+  display: block;
+  margin-top: 6px;
+  color: var(--texto-fraco);
+  font-size: 0.8125rem;
+}
+
+main { max-width: 1100px; margin: 0 auto; }
+
+.cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.cartao, .painel {
+  padding: 20px;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: var(--superficie);
+}
+
+.cartao h2, .painel h2 {
+  color: var(--texto-fraco);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.valor {
+  margin: 12px 0 0;
+  font-size: 2.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.valor-geral { font-size: 1.75rem; }
+
+.unidade {
+  margin-left: 4px;
+  color: var(--texto-fraco);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.selo {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--borda);
+  color: var(--texto-fraco);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.selo-vazio { background: none; }
+
+.nivel-bom     { background: var(--bom-fundo);     color: var(--bom); }
+.nivel-atencao { background: var(--atencao-fundo); color: var(--atencao); }
+.nivel-ruim    { background: var(--ruim-fundo);    color: var(--ruim); }
+
+.cartao.nivel-bom     { border-color: var(--bom); }
+.cartao.nivel-atencao { border-color: var(--atencao); }
+.cartao.nivel-ruim    { border-color: var(--ruim); }
+
+#valor-geral.nivel-bom,
+#valor-geral.nivel-atencao,
+#valor-geral.nivel-ruim { background: none; padding: 0; }
+
+.periodos { display: flex; gap: 8px; margin: 28px 0 16px; }
+
+.periodos button {
+  padding: 7px 14px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--superficie);
+  color: var(--texto-fraco);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.periodos button:hover { color: var(--texto); }
+
+.periodos button.ativo {
+  border-color: var(--texto);
+  color: var(--texto);
+  font-weight: 600;
+}
+
+.graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.area-grafico { position: relative; height: 260px; margin-top: 12px; }
+
+.aviso {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--ruim-fundo);
+  color: var(--ruim);
+  font-size: 0.875rem;
+}
+
+.rodape {
+  max-width: 1100px;
+  margin: 32px auto 0;
+  color: var(--texto-fraco);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 640px) {
+  body { padding: 16px; }
+
+  /* O bloco de estado quebra para a linha de baixo e passa a ocupar a
+     largura toda; alinhado à direita ficaria solto no meio da tela. */
+  .estado { text-align: left; }
+
+  /* Com os cartões empilhados, o espaço reservado para alinhar os selos na
+     mesma altura vira só um buraco no fim do cartão. */
+  .selo-vazio { display: none; }
+
+  .valor { font-size: 2.25rem; }
+
+  .area-grafico { height: 220px; }
+}

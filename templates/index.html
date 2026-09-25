@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitor Ambiental</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body data-intervalo="{{ intervalo }}">
+
+  <header class="cabecalho">
+    <div>
+      <h1>Monitor Ambiental</h1>
+      <p class="subtitulo">Temperatura e umidade &middot; DHT11</p>
+    </div>
+    <div class="estado">
+      <span id="indicador" class="indicador">Carregando</span>
+      <span id="atualizacao" class="atualizacao"></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="cartoes">
+      <article class="cartao" id="cartao-temperatura">
+        <h2>Temperatura</h2>
+        <p class="valor"><span id="valor-temperatura">--</span><span class="unidade">°C</span></p>
+        <p class="selo" id="selo-temperatura">--</p>
+      </article>
+
+      <article class="cartao" id="cartao-umidade">
+        <h2>Umidade</h2>
+        <p class="valor"><span id="valor-umidade">--</span><span class="unidade">%</span></p>
+        <p class="selo" id="selo-umidade">--</p>
+      </article>
+
+      <article class="cartao" id="cartao-geral">
+        <h2>Condição geral</h2>
+        <p class="valor valor-geral" id="valor-geral">--</p>
+        <p class="selo selo-vazio">&nbsp;</p>
+      </article>
+    </section>
+
+    <nav class="periodos" id="periodos">
+      <button type="button" data-horas="1">1 h</button>
+      <button type="button" data-horas="6">6 h</button>
+      <button type="button" data-horas="24" class="ativo">24 h</button>
+      <button type="button" data-horas="168">7 dias</button>
+    </nav>
+
+    <section class="graficos">
+      <article class="painel">
+        <h2>Histórico de temperatura</h2>
+        <div class="area-grafico"><canvas id="grafico-temperatura"></canvas></div>
+      </article>
+
+      <article class="painel">
+        <h2>Histórico de umidade</h2>
+        <div class="area-grafico"><canvas id="grafico-umidade"></canvas></div>
+      </article>
+    </section>
+
+    <p class="aviso" id="aviso" hidden></p>
+  </main>
+
+  <footer class="rodape">
+    Os limites de Bom, Atenção e Ruim ainda são provisórios.
+  </footer>
+
+  <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body>
+</html>
