@@ -64,11 +64,14 @@ class SensorDHT11Kernel:
     RAIZ = Path("/sys/bus/iio/devices")
     NOME_DO_DRIVER = "dht11"
 
+    ARQUIVO_TEMPERATURA = "in_temp_input"
+    ARQUIVO_UMIDADE = "in_humidityrelative_input"
+
     def __init__(self, caminho: str = None):
         base = Path(caminho) if caminho else self._encontrar()
 
-        self._temperatura = base / "in_temp_input"
-        self._umidade = base / "in_humidityrelative_input"
+        self._temperatura = base / self.ARQUIVO_TEMPERATURA
+        self._umidade = base / self.ARQUIVO_UMIDADE
 
         for arquivo in (self._temperatura, self._umidade):
             if not arquivo.is_file():
@@ -77,27 +80,69 @@ class SensorDHT11Kernel:
                     " ser um DHT11."
                 )
 
-        logger.info("DHT11 pelo driver de kernel em %s", base)
+        logger.info(
+            "DHT11 pelo driver de kernel em %s (name: %s)",
+            base,
+            self._nome(base) or "sem nome",
+        )
+
+    @staticmethod
+    def _nome(dispositivo: Path) -> str:
+        """O que o dispositivo diz ser. Nem todo driver preenche isso."""
+        identificacao = dispositivo / "name"
+
+        try:
+            return identificacao.read_text().strip()
+        except OSError:
+            return ""
 
     @classmethod
     def _encontrar(cls) -> Path:
-        """Procura o dispositivo do DHT11 pelo nome, não pelo número.
+        """Procura o dispositivo pelo que ele oferece, não pelo número.
 
         A numeração de iio:deviceN depende da ordem de carga dos drivers e
         muda quando outro sensor entra na jogada, então fixar iio:device0
-        quebraria em silêncio.
-        """
-        for dispositivo in sorted(cls.RAIZ.glob("iio:device*")):
-            identificacao = dispositivo / "name"
+        quebraria em silêncio ao acrescentar hardware.
 
-            if (
-                identificacao.is_file()
-                and identificacao.read_text().strip() == cls.NOME_DO_DRIVER
-            ):
+        A busca é por capacidade — expõe temperatura e umidade relativa — e
+        não pelo arquivo `name`, porque o conteúdo dele varia conforme a
+        versão do device tree. O nome só desempata se houver mais de um
+        candidato.
+        """
+        candidatos = [
+            dispositivo
+            for dispositivo in sorted(cls.RAIZ.glob("iio:device*"))
+            if (dispositivo / cls.ARQUIVO_TEMPERATURA).is_file()
+            and (dispositivo / cls.ARQUIVO_UMIDADE).is_file()
+        ]
+
+        if not candidatos:
+            raise SensorIndisponivel(cls._explicar_ausencia())
+
+        for dispositivo in candidatos:
+            # O driver publica o nome com o pino junto, como "dht11@4", então
+            # a comparação é só da parte antes da arroba.
+            if cls._nome(dispositivo).split("@")[0] == cls.NOME_DO_DRIVER:
                 return dispositivo
 
-        raise SensorIndisponivel(
-            f"Nenhum dispositivo '{cls.NOME_DO_DRIVER}' em {cls.RAIZ}."
+        return candidatos[0]
+
+    @classmethod
+    def _explicar_ausencia(cls) -> str:
+        """Mensagem de erro que mostra o que foi encontrado no lugar.
+
+        Sem isso, quem cai aqui não tem como saber se o driver não carregou
+        ou se carregou com outro formato.
+        """
+        vistos = [
+            f"{dispositivo.name} ({cls._nome(dispositivo) or 'sem nome'})"
+            for dispositivo in sorted(cls.RAIZ.glob("iio:device*"))
+        ]
+
+        return (
+            f"Nenhum dispositivo com {cls.ARQUIVO_TEMPERATURA} e"
+            f" {cls.ARQUIVO_UMIDADE} em {cls.RAIZ}."
+            f" Encontrados: {', '.join(vistos) if vistos else 'nenhum'}."
             " Confira se o config.txt do Raspberry tem a linha"
             f" 'dtoverlay=dht11,gpiopin={config.PINO_BCM}' e se a placa"
             " foi reiniciada depois disso."
