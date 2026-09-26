@@ -1,14 +1,17 @@
-"""Leitura do sensor, com duas implementações intercambiáveis.
+"""Leitura do sensor, com implementações intercambiáveis.
 
-`SensorDHT11` fala com o hardware real pelo GPIO. `SensorSimulado` gera valores
-plausíveis sem hardware nenhum, e é o que permite escrever e testar o coletor,
-o Flask e o dashboard inteiros fora do Raspberry Pi.
+`SensorDHT11Kernel` lê pelo driver de kernel, que é o caminho recomendado.
+`SensorDHT11Blinka` usa a biblioteca da Adafruit, mantida só para quem já
+tem esse caminho funcionando. `SensorSimulado` gera valores plausíveis sem
+hardware nenhum, e é o que permite escrever e testar o coletor, o Flask e o
+dashboard inteiros fora do Raspberry Pi.
 
 Quem escolhe é `criar_sensor()`, a partir de config.SENSOR.
 """
 
 import logging
 import random
+from pathlib import Path
 
 import config
 
@@ -17,6 +20,14 @@ logger = logging.getLogger(__name__)
 
 class LeituraInvalida(RuntimeError):
     """Uma leitura falhou ou veio fora das faixas do datasheet."""
+
+
+class SensorIndisponivel(RuntimeError):
+    """O sensor não pôde sequer ser inicializado.
+
+    Diferente de LeituraInvalida: aqui não adianta tentar de novo, porque
+    falta configuração ou hardware. O coletor deve morrer, não insistir.
+    """
 
 
 def _validar(temperatura, umidade) -> tuple[float, float]:
@@ -32,21 +43,108 @@ def _validar(temperatura, umidade) -> tuple[float, float]:
     return float(temperatura), float(umidade)
 
 
-class SensorDHT11:
-    """DHT11 ligado ao GPIO do Raspberry Pi."""
+class SensorDHT11Kernel:
+    """DHT11 pelo driver de kernel do Linux, via sysfs (subsistema IIO).
 
-    def __init__(self, pino: str = None):
+    O kernel mede os pulsos do sensor por interrupção, com carimbo de tempo
+    feito pelo próprio kernel. É muito mais confiável do que contar
+    microssegundos em Python, e é o único caminho que funciona no Raspberry
+    Pi 5.
+
+    Exige uma linha no config.txt do Raspberry e um reboot:
+
+        dtoverlay=dht11,gpiopin=4
+
+    O driver devolve milésimos: 23400 é 23,4 °C e 75000 é 75,0 %. Ele também
+    guarda a última medição por cerca de 2 segundos, então ler temperatura e
+    umidade em seguida devolve o mesmo par coerente, e não duas medições
+    diferentes.
+    """
+
+    RAIZ = Path("/sys/bus/iio/devices")
+    NOME_DO_DRIVER = "dht11"
+
+    def __init__(self, caminho: str = None):
+        base = Path(caminho) if caminho else self._encontrar()
+
+        self._temperatura = base / "in_temp_input"
+        self._umidade = base / "in_humidityrelative_input"
+
+        for arquivo in (self._temperatura, self._umidade):
+            if not arquivo.is_file():
+                raise SensorIndisponivel(
+                    f"{arquivo} não existe. O dispositivo em {base} não parece"
+                    " ser um DHT11."
+                )
+
+        logger.info("DHT11 pelo driver de kernel em %s", base)
+
+    @classmethod
+    def _encontrar(cls) -> Path:
+        """Procura o dispositivo do DHT11 pelo nome, não pelo número.
+
+        A numeração de iio:deviceN depende da ordem de carga dos drivers e
+        muda quando outro sensor entra na jogada, então fixar iio:device0
+        quebraria em silêncio.
+        """
+        for dispositivo in sorted(cls.RAIZ.glob("iio:device*")):
+            identificacao = dispositivo / "name"
+
+            if (
+                identificacao.is_file()
+                and identificacao.read_text().strip() == cls.NOME_DO_DRIVER
+            ):
+                return dispositivo
+
+        raise SensorIndisponivel(
+            f"Nenhum dispositivo '{cls.NOME_DO_DRIVER}' em {cls.RAIZ}."
+            " Confira se o config.txt do Raspberry tem a linha"
+            f" 'dtoverlay=dht11,gpiopin={config.PINO_BCM}' e se a placa"
+            " foi reiniciada depois disso."
+        )
+
+    def ler(self) -> tuple[float, float]:
+        try:
+            temperatura = int(self._temperatura.read_text()) / 1000
+            umidade = int(self._umidade.read_text()) / 1000
+        except OSError as erro:
+            # O driver devolve erro de E/S quando o sensor não respondeu no
+            # tempo esperado. No DHT11 isso é rotina, não defeito.
+            raise LeituraInvalida(f"driver não devolveu leitura: {erro}") from erro
+        except ValueError as erro:
+            raise LeituraInvalida(f"driver devolveu valor ilegível: {erro}") from erro
+
+        return _validar(temperatura, umidade)
+
+    def fechar(self) -> None:
+        pass
+
+
+class SensorDHT11Blinka:
+    """DHT11 pela biblioteca da Adafruit, contando pulsos em Python.
+
+    Só funciona em Raspberry Pi 4 ou anterior, e mesmo lá de forma instável:
+    os pulsos do DHT11 duram de 26 a 70 microssegundos, e o Linux não é um
+    sistema de tempo real, então o agendador rouba o processador no meio da
+    medição e a leitura se perde. No Raspberry Pi 5 não funciona de jeito
+    nenhum, porque o controlador de GPIO mudou.
+
+    Prefira SensorDHT11Kernel. Esta implementação fica para quem já tem esse
+    caminho rodando e não quer mexer.
+    """
+
+    def __init__(self, pino: int = None):
         # O import fica aqui dentro porque Adafruit-Blinka só instala e importa
         # no Raspberry. Assim este arquivo continua importável no notebook.
         import adafruit_dht
         import board
 
-        nome_pino = pino or config.PINO_DADOS
+        numero = pino if pino is not None else config.PINO_BCM
         self._dispositivo = adafruit_dht.DHT11(
-            getattr(board, nome_pino),
+            getattr(board, f"D{numero}"),
             use_pulseio=False,
         )
-        logger.info("DHT11 inicializado no pino %s", nome_pino)
+        logger.info("DHT11 (Blinka) inicializado no GPIO%d", numero)
 
     def ler(self) -> tuple[float, float]:
         try:
@@ -100,15 +198,20 @@ class SensorSimulado:
         pass
 
 
+IMPLEMENTACOES = {
+    "dht11": SensorDHT11Kernel,
+    "dht11-blinka": SensorDHT11Blinka,
+    "simulado": SensorSimulado,
+}
+
+
 def criar_sensor(nome: str = None):
     nome = nome or config.SENSOR
 
-    if nome == "dht11":
-        return SensorDHT11()
-
-    if nome == "simulado":
-        return SensorSimulado()
-
-    raise ValueError(
-        f"MONITOR_SENSOR desconhecido: {nome!r}. Use 'dht11' ou 'simulado'."
-    )
+    try:
+        return IMPLEMENTACOES[nome]()
+    except KeyError:
+        raise ValueError(
+            f"MONITOR_SENSOR desconhecido: {nome!r}."
+            f" Use um destes: {', '.join(sorted(IMPLEMENTACOES))}."
+        ) from None

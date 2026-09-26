@@ -17,15 +17,20 @@ DB_PATH = Path(os.getenv("MONITOR_DB", BASE_DIR / "data" / "monitor.db"))
 # O DHT11 não aceita leituras a menos de 2 s de distância.
 INTERVALO_SEGUNDOS = int(os.getenv("MONITOR_INTERVALO", "60"))
 
-# "dht11" = sensor real via GPIO. "simulado" = valores gerados, para desenvolver
-# fora do Raspberry.
+# Qual implementação de sensor usar:
 #
-# O padrão é o sensor real de propósito: se a biblioteca do GPIO falhar no Pi,
-# queremos um erro na cara, não dados inventados entrando no banco em silêncio.
+#   "dht11"         driver de kernel do Linux (recomendado, exige dtoverlay)
+#   "dht11-blinka"  biblioteca da Adafruit, contando pulsos em Python
+#   "simulado"      valores gerados, para desenvolver fora do Raspberry
+#
+# O padrão é o sensor real de propósito: se o driver não estiver carregado no
+# Pi, queremos um erro na cara, não dados inventados entrando no banco em
+# silêncio.
 SENSOR = os.getenv("MONITOR_SENSOR", "dht11")
 
-# Pino de dados do DHT11 na numeração BCM. board.D4 == GPIO4.
-PINO_DADOS = os.getenv("MONITOR_PINO", "D4")
+# Pino de dados do DHT11 na numeração BCM. GPIO4 é o pino físico 7.
+# Precisa bater com o gpiopin do dtoverlay no config.txt do Raspberry.
+PINO_BCM = int(os.getenv("MONITOR_PINO", "4"))
 
 # O DHT11 erra bastante: 30% a 50% de leituras inválidas é comportamento
 # normal do sensor, não defeito da ligação. Por isso cada ciclo tenta

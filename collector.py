@@ -60,7 +60,14 @@ def main() -> None:
     database.criar_esquema()
     logger.info("Banco em %s", config.DB_PATH)
 
-    sensor = sensor_modulo.criar_sensor()
+    try:
+        sensor = sensor_modulo.criar_sensor()
+    except sensor_modulo.SensorIndisponivel as erro:
+        # Falta configuração ou hardware: insistir não resolve. Melhor morrer
+        # com a explicação no journal do que encher o log de tentativas.
+        logger.error("Sensor indisponível: %s", erro)
+        raise SystemExit(1)
+
     logger.info(
         "Coletando a cada %d s (sensor: %s)",
         config.INTERVALO_SEGUNDOS,
@@ -88,7 +95,7 @@ def main() -> None:
                 temperatura, umidade = leitura
                 database.gravar(temperatura, umidade)
                 logger.info(
-                    "Temperatura: %.0f °C | Umidade: %.0f %%",
+                    "Temperatura: %.1f °C | Umidade: %.1f %%",
                     temperatura,
                     umidade,
                 )

@@ -12,7 +12,7 @@ DHT11 → Raspberry Pi → Python → SQLite → Flask → Chart.js → dashboar
 | Arquivo | Papel |
 | --- | --- |
 | `config.py` | Todos os ajustes, sobrescrevíveis por variável de ambiente |
-| `sensor.py` | Leitura do DHT11, com uma implementação simulada equivalente |
+| `sensor.py` | Leitura do DHT11, com implementações intercambiáveis |
 | `database.py` | Esquema e consultas do SQLite |
 | `collector.py` | Processo que lê o sensor e grava, em intervalos regulares |
 | `app.py` | Flask: as APIs e a página |
@@ -51,11 +51,28 @@ MONITOR_SENSOR=simulado MONITOR_INTERVALO=5 python collector.py
 
 ## Rodar no Raspberry Pi
 
+Primeiro habilite o driver de kernel do DHT11. Acrescente ao final do
+`/boot/firmware/config.txt` (ou `/boot/config.txt` em sistemas mais antigos):
+
+```text
+[all]
+dtoverlay=dht11,gpiopin=4
+```
+
+O `gpiopin` é o número BCM e precisa bater com `MONITOR_PINO`. Reinicie a
+placa depois de editar. Para conferir que o driver subiu:
+
+```bash
+cat /sys/bus/iio/devices/iio:device0/in_temp_input
+```
+
+Deve sair um número em milésimos de grau, como `23400`. Então:
+
 ```bash
 git clone <url-do-repositorio> ~/monitor-ambiental
 cd ~/monitor-ambiental
 
-python3 -m venv --system-site-packages .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-pi.txt
 ```
@@ -95,16 +112,24 @@ Tudo tem padrão razoável; sobrescreva por variável de ambiente quando precisa
 
 | Variável | Padrão | O que faz |
 | --- | --- | --- |
-| `MONITOR_SENSOR` | `dht11` | `dht11` ou `simulado` |
+| `MONITOR_SENSOR` | `dht11` | `dht11`, `dht11-blinka` ou `simulado` |
 | `MONITOR_INTERVALO` | `60` | Segundos entre gravações |
-| `MONITOR_PINO` | `D4` | Pino de dados, numeração BCM |
+| `MONITOR_PINO` | `4` | Pino de dados, numeração BCM |
 | `MONITOR_DB` | `data/monitor.db` | Caminho do banco |
 | `MONITOR_PORTA` | `5000` | Porta do Flask |
 | `MONITOR_TENTATIVAS` | `5` | Tentativas de leitura por ciclo |
 
-O padrão de `MONITOR_SENSOR` é o sensor real de propósito. Se a biblioteca do
-GPIO falhar no Pi, queremos um erro visível, não dados simulados entrando no
-banco em silêncio.
+O padrão de `MONITOR_SENSOR` é o sensor real de propósito. Se o driver não
+estiver carregado no Pi, queremos um erro visível, não dados simulados
+entrando no banco em silêncio.
+
+As três implementações:
+
+| Valor | Como lê |
+| --- | --- |
+| `dht11` | Driver de kernel do Linux, via sysfs. É o recomendado |
+| `dht11-blinka` | Biblioteca da Adafruit, contando pulsos em Python |
+| `simulado` | Valores gerados, sem hardware |
 
 ## APIs
 
@@ -160,6 +185,25 @@ fundamentados. Vale lembrar, ao revisar: a umidade do DHT11 tem precisão de
 ±5%, então limites muito estreitos dariam uma falsa sensação de exatidão.
 
 ## Sobre o DHT11
+
+### Por que o driver de kernel
+
+Os pulsos do DHT11 duram de 26 a 70 microssegundos. Contar isso em Python, no
+espaço do usuário, depende de o agendador do Linux não roubar o processador no
+meio da medição, e ele rouba: o Linux não é um sistema de tempo real. No
+Raspberry Pi 4 e anteriores o caminho da Adafruit passa raspando, com muitas
+falhas; no Raspberry Pi 5 não funciona de jeito nenhum, porque o controlador de
+GPIO mudou para o chip RP1.
+
+O driver de kernel mede os pulsos por interrupção, com carimbo de tempo feito
+pelo próprio kernel, e não sofre disso. Ele já vem no Raspberry Pi OS e não
+exige biblioteca Python nenhuma.
+
+Sintoma típico de quem está no caminho errado: `DHT sensor not found, check
+wiring` de forma consistente, mesmo com a ligação correta. A mensagem culpa a
+fiação, mas o que houve foi que nenhum pulso chegou a ser visto.
+
+### Falhas de leitura
 
 Leituras inválidas são rotina, não defeito: 30% a 50% de falhas é o
 comportamento normal do sensor. Por isso cada ciclo do coletor tenta algumas

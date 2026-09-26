@@ -68,8 +68,9 @@
 
     const { leitura, avaliacao, atualizado } = dados;
 
+    // O driver de kernel devolve décimos de grau; a umidade vem inteira.
     elemento("valor-temperatura").textContent =
-      leitura.temperatura.toFixed(0);
+      leitura.temperatura.toFixed(1);
     elemento("valor-umidade").textContent = leitura.umidade.toFixed(0);
     elemento("valor-geral").textContent = ROTULOS[avaliacao.geral];
 

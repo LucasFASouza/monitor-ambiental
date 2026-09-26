@@ -1,8 +1,15 @@
-# Dependências do Raspberry Pi. Incluem o acesso ao GPIO, que não instala
-# (nem faz sentido) fora do Pi.
+# Dependências do Raspberry Pi.
 #
 #   pip install -r requirements-pi.txt
+#
+# O caminho recomendado de leitura do DHT11 é o driver de kernel do Linux, que
+# não precisa de biblioteca Python nenhuma: basta a linha do dtoverlay no
+# config.txt. Por isso aqui não há nada além do que já está em requirements.txt.
 -r requirements.txt
 
-Adafruit-Blinka
-adafruit-circuitpython-dht
+# Só se você for usar MONITOR_SENSOR=dht11-blinka, que conta os pulsos em
+# Python. Não funciona no Raspberry Pi 5 e é instável nos anteriores; prefira
+# o driver de kernel.
+#
+# Adafruit-Blinka
+# adafruit-circuitpython-dht
