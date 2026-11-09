@@ -36,11 +36,6 @@ def _inteiro(nome: str, padrao: int, minimo: int, maximo: int) -> int:
     return min(max(valor, minimo), maximo)
 
 
-# Offset de catálogo do INMP441. Enquanto for este, o nível em dB(A) não foi
-# calibrado contra referência nenhuma, e o dashboard precisa dizer isso.
-OFFSET_SEM_CALIBRACAO = 120.0
-
-
 @app.get("/")
 def pagina():
     # A página é montada inteira no servidor, gráficos incluídos: são poucos
@@ -68,7 +63,7 @@ def _bloco_ruido() -> dict | None:
         "avaliacao": avaliacao.avaliar_ruido(leitura["laeq"]),
         "atualizado": idade <= config.RUIDO_JANELA_SEGUNDOS * 3,
         "janela_segundos": config.RUIDO_JANELA_SEGUNDOS,
-        "calibrado": config.RUIDO_OFFSET_DB != OFFSET_SEM_CALIBRACAO,
+        "calibrado": database.offset_ruido() != database.OFFSET_DE_CATALOGO,
     }
 
 
@@ -169,6 +164,102 @@ def api_ruido_history():
             ],
         }
     )
+
+
+@app.get("/api/calibracao")
+def api_calibracao_ler():
+    """Estado da calibração do ruído."""
+    ultima = database.ultima_calibracao()
+    offset = database.offset_ruido()
+
+    return jsonify({
+        "offset_db": offset,
+        "calibrado": offset != database.OFFSET_DE_CATALOGO,
+        "offset_de_catalogo": database.OFFSET_DE_CATALOGO,
+        "ultima": None if ultima is None else {
+            "data_hora": _iso(ultima["ts"]),
+            "referencia_dba": ultima["referencia_dba"],
+            "medido_dbfs": ultima["medido_dbfs"],
+            "offset_db": ultima["offset_db"],
+            "minutos": ultima["minutos"],
+            "janelas": ultima["janelas"],
+            "observacao": ultima["observacao"],
+        },
+    })
+
+
+@app.post("/api/calibracao")
+def api_calibracao_gravar():
+    """Calibra o ruído comparando uma janela de tempo com um medidor externo.
+
+    O corpo traz o LAeq que o medidor de referência mostrou e por quantos
+    minutos ele ficou ao lado. O offset sai da diferença entre esse valor e o
+    que este monitor mediu na MESMA janela — nunca de um instante, porque o
+    nível flutua a cada segundo e um ponto contra outro compara ruído com
+    ruído.
+    """
+    corpo = request.get_json(silent=True) or {}
+
+    try:
+        referencia = float(corpo["referencia_dba"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({
+            "erro": "referencia_dba_invalida",
+            "mensagem": "Informe em `referencia_dba` o LAeq que o medidor de "
+                        "referência mostrou, em dB(A).",
+        }), 400
+
+    try:
+        minutos = int(corpo.get("minutos", 5))
+    except (TypeError, ValueError):
+        minutos = 5
+
+    minutos = min(max(minutos, 1), 120)
+
+    if not 20.0 <= referencia <= 130.0:
+        return jsonify({
+            "erro": "referencia_fora_de_faixa",
+            "mensagem": f"{referencia} dB(A) está fora do que um medidor "
+                        "mediria num ambiente de trabalho (20 a 130).",
+        }), 400
+
+    ate = int(time.time())
+    desde = ate - minutos * 60
+    medido, janelas = database.nivel_cru_do_periodo(desde, ate)
+
+    # Sem janelas suficientes a média não representa o período: calibrar com
+    # uma ou duas leituras devolveria um offset tão instável quanto o chute.
+    minimo = max(minutos * 60 // config.RUIDO_JANELA_SEGUNDOS // 2, 3)
+
+    if medido is None or janelas < minimo:
+        return jsonify({
+            "erro": "janelas_insuficientes",
+            "mensagem": f"Só há {janelas} leitura(s) de ruído nos últimos "
+                        f"{minutos} min, e seriam necessárias ao menos {minimo}. "
+                        "O coletor de ruído está rodando?",
+            "janelas": janelas,
+            "minimo": minimo,
+        }), 409
+
+    offset = database.registrar_calibracao(
+        referencia_dba=referencia,
+        medido_dbfs=medido,
+        minutos=minutos,
+        janelas=janelas,
+        observacao=(corpo.get("observacao") or None),
+    )
+
+    return jsonify({
+        "offset_db": offset,
+        "medido_dbfs": round(medido, 2),
+        "referencia_dba": referencia,
+        "minutos": minutos,
+        "janelas": janelas,
+        "anterior": database.OFFSET_DE_CATALOGO,
+        "mensagem": f"Calibrado em {offset:+.2f} dB a partir de {janelas} "
+                    f"janelas dos últimos {minutos} min. Todo o histórico "
+                    "passa a ser lido com este offset.",
+    })
 
 
 @app.get("/api/limites")

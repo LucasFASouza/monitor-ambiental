@@ -37,64 +37,100 @@
 body {
   background: var(--ambiente);
   color: var(--tinta);
-  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 400 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-/* --- capa: um campo saturado ocupando a região inteira, não um acento ----- */
-
-.capa { background: var(--capa); color: var(--capa-texto); }
+/* --- capa: a barra fina da variante escolhida ---------------------------- */
+/* Uma faixa de identidade e nada mais. O estado geral saiu daqui: as tres
+   grandezas ja dizem a propria condicao por extenso, e repetir no topo era
+   duplicata. */
+.capa { background: var(--capa); }
 
 .capa-fita {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px 28px;
+  align-items: center;
+  gap: 10px 20px;
   max-width: 1120px;
   margin: 0 auto;
-  padding: 22px 32px 0;
+  padding: 8px 32px;
 }
 
-.capa h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.012em; }
+.capa h1 {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--capa-texto) 82%, transparent);
+}
 
-.local { margin-top: 2px; color: var(--capa-fraco); font-size: 0.9375rem; }
+/* --- periodo: no cabecalho, encostado a direita ------------------------- */
 
-.periodos { display: flex; gap: 4px; margin-left: auto; }
-
-.periodos a {
-  padding: 10px 15px;
-  min-height: 44px;
+.periodo {
   display: flex;
   align-items: center;
-  color: var(--capa-fraco);
-  font-size: 0.9375rem;
-  text-decoration: none;
-  border-bottom: 3px solid transparent;
+  gap: 9px;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--capa-texto) 72%, transparent);
+  font-size: 0.8125rem;
 }
 
-.periodos a:hover { color: var(--capa-texto); }
-
-.periodos a[aria-current] {
+.periodo select {
+  font: inherit;
+  font-size: 0.875rem;
   color: var(--capa-texto);
-  font-weight: 600;
-  border-bottom-color: var(--capa-texto);
+  padding: 4px 7px;
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, var(--capa-texto) 32%, transparent);
+  background: var(--capa-fundo);
 }
+
+.periodo select:hover { border-color: var(--capa-texto); }
+
+.periodo button {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 4px 9px;
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, var(--capa-texto) 32%, transparent);
+  background: transparent;
+  color: var(--capa-texto);
+  cursor: pointer;
+}
+
+.js .periodo button { display: none; }
+
+/* --- frescor da leitura --------------------------------------------------- */
+
+.frescor {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 22px 0 2px;
+  color: var(--meio);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pulso {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bom);
+  flex: none;
+}
+
+.frescor.parado { color: var(--ruim); }
+.frescor.parado .pulso { background: var(--ruim); }
 
 /* --- corpo ---------------------------------------------------------------- */
 
 main { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
 
-.situacao {
-  margin: 34px 0 18px;
-  font-size: 1.25rem;
-  line-height: 1.5;
-  max-width: 58ch;
-}
 
-.situacao b { font-weight: 600; }
 
-.situacao.alerta { color: var(--ruim); font-weight: 600; }
 
 .n-bom { color: var(--bom); }
 .n-atencao { color: var(--atencao); }
@@ -111,16 +147,45 @@ main { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
 
 .grandeza:first-of-type { border-top: 0; }
 
-/* Mais espaço acima de um título do que abaixo dele. */
-.leitura h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 7px; }
+/* Mais espaco acima de um titulo do que abaixo dele. */
+.cabeca { display: flex; align-items: flex-start; gap: 13px; }
 
-.frase { font-size: 1rem; line-height: 1.55; }
+.leitura h2 { font-size: 1.1875rem; font-weight: 500; letter-spacing: -0.008em; }
+
+.simbolos { display: none; }
+
+/* Ladrilho sólido com o glifo vazado, no lugar do contorno cinza de antes.
+   A cor dele é o estado, então categoria e situação se leem de uma vez. */
+.ladrilho {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  color: #fff;
+}
+
+.ladrilho svg { width: 25px; height: 25px; }
+
+.ladrilho.t-bom { background: var(--bom); }
+.ladrilho.t-atencao { background: var(--atencao); }
+.ladrilho.t-ruim { background: var(--ruim); }
+.ladrilho.t-sem { background: var(--fraco); }
+
+.estado { margin-top: 3px; font-size: 0.9375rem; font-weight: 500; }
+
+.estado.e-bom { color: var(--bom); }
+.estado.e-atencao { color: var(--atencao); }
+.estado.e-ruim { color: var(--ruim); }
+
+
 
 .valor {
-  margin-top: 10px;
-  font-size: 2.125rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
+  margin-top: 16px;
+  font-size: 2.375rem;
+  font-weight: 300;
+  letter-spacing: -0.03em;
   line-height: 1.05;
 }
 
@@ -132,20 +197,19 @@ main { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
   letter-spacing: 0;
 }
 
-.referencia {
+.explicacao {
   margin-top: 10px;
   color: var(--meio);
   font-size: 0.875rem;
   line-height: 1.6;
 }
 
-/* O gráfico senta direto na página: um painel com borda em volta dele seria
-   um cartão, e o mundo escolhido não tem cartão. */
-.curva { padding: 2px 0 0; }
 
-.curva-estreita { display: none; }
 
-.curva svg { display: block; }
+/* O grafico senta direto na pagina: um painel com borda em volta dele seria
+   um cartao, e o mundo escolhido nao tem cartao. */
+.curva { position: relative; height: 188px; padding-top: 2px; }
+
 
 /* --- pé ------------------------------------------------------------------- */
 
@@ -161,6 +225,8 @@ footer {
 
 footer p + p { margin-top: 9px; }
 
+.fontes { color: var(--fraco); font-size: 0.8125rem; }
+
 footer p { max-width: 74ch; }
 
 .ressalva { color: var(--ruim); }
@@ -168,18 +234,14 @@ footer p { max-width: 74ch; }
 /* --- celular: modo secundário --------------------------------------------- */
 
 @media (max-width: 760px) {
-  .capa-fita { padding: 18px 18px 0; }
-  .periodos { margin-left: 0; width: 100%; overflow-x: auto; }
+  .capa-fita { padding: 18px 18px 20px; }
   main { padding: 0 18px; }
   footer { padding: 18px 18px 36px; }
 
-  .situacao { font-size: 1.125rem; margin-top: 24px; }
-
+  
   /* O gráfico passa a vir abaixo do texto: lado a lado em 360 px espremeria
      os dois até nenhum ser legível. */
   .grandeza { grid-template-columns: 1fr; gap: 16px; }
 
-  .curva { margin: 0; }
-  .curva-larga { display: none; }
-  .curva-estreita { display: block; }
+  .curva { margin: 0; height: 180px; }
 }

@@ -63,16 +63,10 @@ RUIDO_CANAL = int(os.getenv("MONITOR_RUIDO_CANAL", "0"))
 # Quantos segundos de áudio entram em cada LAeq gravado.
 RUIDO_JANELA_SEGUNDOS = int(os.getenv("MONITOR_RUIDO_JANELA", "60"))
 
-# Offset de calibração, em dB, somado ao nível em dBFS para virar dB(A).
-#
-# O padrão sai da sensibilidade de catálogo do INMP441: -26 dBFS para
-# 94 dB SPL, o que dá 120.
-#
-# ISSO É UM PONTO DE PARTIDA, NÃO UMA CALIBRAÇÃO. Cada módulo varia, e o valor
-# real só aparece comparando com um medidor de referência no mesmo ambiente.
-# Enquanto não for levantado, o número absoluto é indicativo: confie na
-# variação, não no valor.
-RUIDO_OFFSET_DB = float(os.getenv("MONITOR_RUIDO_OFFSET", "120.0"))
+# O offset de calibração do ruído NÃO fica aqui: ele vive no banco, em
+# `configuracao`, porque o dashboard precisa poder alterá-lo e o histórico
+# precisa ser reinterpretado inteiro quando isso acontece. Ver
+# `database.offset_ruido`.
 
 
 # --- Limites de classificação -----------------------------------------------

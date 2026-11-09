@@ -12,7 +12,8 @@ Raspberry: o `arecord` já vem com o sistema.
 
 AVISO SOBRE O NÚMERO ABSOLUTO: o nível em dB(A) depende de um offset de
 calibração que precisa ser levantado contra um medidor de referência. Sem
-isso, só a variação relativa tem significado. Ver config.RUIDO_OFFSET_DB.
+isso, só a variação relativa tem significado. O offset vive no banco, em
+`configuracao`: ver `database.offset_ruido`.
 """
 
 import logging

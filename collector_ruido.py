@@ -36,20 +36,21 @@ def _tratar_sinal(numero, _quadro):
     encerrar.set()
 
 
-def gravar_janela(niveis: list[float]) -> None:
+def gravar_janela(niveis: list[float], offset: float) -> None:
+    """Grava a janela em dBFS cru. O offset entra só no log, para leitura humana."""
     laeq = sensor_ruido.media_energetica(niveis)
 
     database.gravar_ruido(
-        laeq=round(laeq, 1),
-        lamax=round(max(niveis), 1),
-        lamin=round(min(niveis), 1),
+        laeq_dbfs=round(laeq, 2),
+        lamax_dbfs=round(max(niveis), 2),
+        lamin_dbfs=round(min(niveis), 2),
     )
 
     logger.info(
         "LAeq %.1f dB(A) | máx %.1f | mín %.1f  (%d s)",
-        laeq,
-        max(niveis),
-        min(niveis),
+        laeq + offset,
+        max(niveis) + offset,
+        min(niveis) + offset,
         len(niveis),
     )
 
@@ -68,13 +69,17 @@ def main() -> None:
         logger.error("Captura indisponível: %s", erro)
         raise SystemExit(1)
 
+    # O offset vem do banco, onde o dashboard pode alterá-lo. Aqui ele só serve
+    # para o log sair em dB(A) legível: o valor gravado é sempre cru.
+    offset = database.offset_ruido()
+
     logger.info(
-        "Janela de %d s | offset de calibração %+.1f dB",
+        "Janela de %d s | offset de calibração em vigor %+.1f dB",
         config.RUIDO_JANELA_SEGUNDOS,
-        config.RUIDO_OFFSET_DB,
+        offset,
     )
 
-    if config.RUIDO_OFFSET_DB == 120.0:
+    if offset == database.OFFSET_DE_CATALOGO:
         logger.warning(
             "Offset ainda é o valor de catálogo do INMP441, não uma"
             " calibração. O número absoluto é indicativo."
@@ -96,14 +101,11 @@ def main() -> None:
                 logger.error("Captura interrompida: %s", erro)
                 raise SystemExit(1)
 
-            nivel = (
-                sensor_ruido.nivel_ponderado_a(bloco, microfone.taxa)
-                + config.RUIDO_OFFSET_DB
-            )
-            niveis.append(nivel)
+            # Sem offset: o que se grava é dBFS cru.
+            niveis.append(sensor_ruido.nivel_ponderado_a(bloco, microfone.taxa))
 
             if len(niveis) >= config.RUIDO_JANELA_SEGUNDOS:
-                gravar_janela(niveis)
+                gravar_janela(niveis, offset)
                 niveis = []
     finally:
         microfone.fechar()

@@ -13,3 +13,9 @@ data/*.db-shm
 
 # Sistema
 .DS_Store
+
+# Estado de execução do modo live do impeccable. Só a configuração é
+# compartilhável; o resto é efêmero da máquina.
+.impeccable/live/*
+!.impeccable/live/config.json
+.impeccable/mocks/

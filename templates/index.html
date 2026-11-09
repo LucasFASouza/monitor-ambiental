@@ -6,72 +6,100 @@
   <title>Monitor ambiental</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body data-intervalo="{{ visao.intervalo }}" data-horas="{{ visao.horas }}">
+<body data-intervalo="{{ visao.intervalo }}">
+
+<svg class="simbolos" aria-hidden="true">
+  <symbol id="i-temperatura" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.5a2.4 2.4 0 0 1 2.4 2.4v7.3a4.6 4.6 0 1 1-4.8 0V5.9A2.4 2.4 0 0 1 12 3.5Z"/>
+    <path d="M12 9.2v7.4"/>
+  </symbol>
+  <symbol id="i-umidade" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.2c3.1 3.6 5.4 6.6 5.4 9.3A5.4 5.4 0 0 1 6.6 12.5c0-2.7 2.3-5.7 5.4-9.3Z"/>
+    <path d="M9.6 13.4a2.6 2.6 0 0 0 2.2 2.6"/>
+  </symbol>
+  <symbol id="i-ruido" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.5 9.6h2.9L11.4 6v12L7.4 14.4H4.5Z"/>
+    <path d="M15 9.3a3.8 3.8 0 0 1 0 5.4"/>
+    <path d="M17.8 6.6a7.6 7.6 0 0 1 0 10.8"/>
+  </symbol>
+</svg>
 
 <header class="capa">
   <div class="capa-fita">
-    <div>
-      <h1>Monitor ambiental</h1>
-      <p class="local">Escritório
-        {%- if visao.idade_segundos is not none %} ·
-          <span id="idade">leitura de {{ visao.idade_segundos }} s atrás</span>
-        {%- endif %}
-      </p>
-    </div>
-
-    <nav class="periodos" aria-label="Período do histórico">
-      {% for horas, rotulo in visao.periodos %}
-        <a href="?horas={{ horas }}"{% if horas == visao.horas %} aria-current="page"{% endif %}>{{ rotulo }}</a>
-      {% endfor %}
-    </nav>
+    <h1>Monitor ambiental</h1>
+    <form class="periodo" method="get">
+      <label for="horas">Período</label>
+      <select id="horas" name="horas">
+        {% for horas, rotulo in visao.periodos %}
+          <option value="{{ horas }}"{% if horas == visao.horas %} selected{% endif %}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Ver</button>
+    </form>
   </div>
 </header>
 
-<main>
-  {% if not visao.blocos or visao.blocos[0].valor is none %}
-    <p class="situacao">Ainda não há leituras no banco. A coleta já está rodando?</p>
-  {% elif not visao.atualizado %}
-    <p class="situacao alerta">A última leitura está velha. A coleta pode ter parado.</p>
-  {% elif visao.fora %}
-    <p class="situacao">
-      Agora
-      {% for b in visao.fora %}{% if not loop.first %}{% if loop.last %} e {% else %}, {% endif %}{% endif %}<b class="n-{{ b.nivel }}">{{ b.nome|lower }}</b>{% endfor %}
-      {{ 'está' if visao.fora|length == 1 else 'estão' }} fora da faixa recomendada.
-      As demais grandezas seguem dentro.
+<main class="conteudo">
+  {% if visao.idade_segundos is not none %}
+    <p class="frescor {{ 'parado' if not visao.atualizado else '' }}">
+      {% if visao.atualizado %}
+        <span class="pulso" aria-hidden="true"></span><span id="idade">leitura de {{ visao.idade_segundos }} s atrás</span>
+      {% else %}
+        <span class="pulso" aria-hidden="true"></span>A coleta parou. Última leitura
+        <span id="idade">de {{ visao.idade_segundos }} s atrás</span>.
+      {% endif %}
     </p>
-  {% else %}
-    <p class="situacao">Agora as três grandezas estão dentro da faixa recomendada.</p>
   {% endif %}
 
   {% for b in visao.blocos %}
     <section class="grandeza">
       <div class="leitura">
-        <h2>{{ b.nome }}</h2>
-        {% if b.valor is none %}
-          <p class="frase">Sem leitura. {{ 'O coletor de ruído já está rodando?' if b.chave == 'ruido' else '' }}</p>
-        {% else %}
-          <p class="frase">Está <b class="n-{{ b.nivel }}">{{ b.frase }}</b>.</p>
+        <div class="cabeca">
+          <span class="ladrilho t-{{ b.nivel or 'sem' }}" aria-hidden="true">
+            <svg><use href="#i-{{ b.chave }}"></use></svg>
+          </span>
+          <div>
+            <h2>{{ b.nome }}</h2>
+            {% if b.valor is none %}
+              <p class="estado">Sem leitura</p>
+            {% else %}
+              <p class="estado e-{{ b.nivel }}">{{ b.frase|capitalize }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if b.valor is not none %}
           <p class="valor">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>
         {% endif %}
-        <p class="referencia">{{ b.referencia }}</p>
+        <p class="explicacao">{{ b.explicacao }}</p>
       </div>
-      <div class="curva curva-larga">{{ b.svg|safe }}</div>
-      <div class="curva curva-estreita">{{ b.svg_estreito|safe }}</div>
+      <div class="curva">
+        <canvas data-grafico="{{ b.chave }}"
+                aria-label="Histórico de {{ b.nome|lower }} no período selecionado" role="img"></canvas>
+      </div>
     </section>
   {% endfor %}
 </main>
 
 <footer>
   {% if not visao.ruido_calibrado %}
-    <p class="ressalva">O nível de ruído usa o valor de catálogo do microfone e ainda não foi
-      comparado com um medidor de referência. Enquanto isso, a variação é confiável e o número
-      absoluto não. Este monitor não substitui instrumento com certificado de calibração.</p>
+    <p class="ressalva">O nível de ruído ainda não foi comparado com um medidor de referência.
+      Por enquanto, confie na variação e não no número. Este monitor não substitui instrumento
+      com certificado de calibração.</p>
   {% endif %}
-  <p>A linha é a média de cada intervalo e a sombra atrás dela é o mínimo e o máximo do mesmo
-    intervalo. A régua colorida à esquerda marca as faixas na escala; as linhas horizontais
-    marcam os limites.</p>
+  <p>A linha é a média de cada intervalo. A sombra atrás dela mostra o mínimo e o máximo do mesmo
+    intervalo, então um pico curto não some na média. A régua colorida à esquerda marca as faixas
+    na escala, e a vermelha só aparece quando a medição chega perto dela.</p>
+  <p class="fontes">Temperatura: faixa de 18 a 25 °C do item 17.8.4.2 da NR-17.
+    Ruído: 45 dB(A) da NBR 10152:2017 e teto de 65 dB(A) do item 17.8.4.1.2 da NR-17.
+    Umidade: convergência de fontes, sem norma brasileira vigente.</p>
 </footer>
 
+<script id="dados" type="application/json">{{ visao.dados_json|safe }}</script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='dashboard.js') }}" defer></script>
 </body>
 </html>

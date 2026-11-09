@@ -28,15 +28,42 @@ CREATE TABLE IF NOT EXISTS leituras (
 CREATE INDEX IF NOT EXISTS idx_leituras_ts ON leituras (ts);
 
 CREATE TABLE IF NOT EXISTS leituras_ruido (
-    id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts    INTEGER NOT NULL,  -- epoch UTC, fim da janela de integração
-    laeq  REAL    NOT NULL,  -- nível equivalente da janela, dB(A)
-    lamax REAL    NOT NULL,  -- maior nível de 1 s dentro da janela, dB(A)
-    lamin REAL    NOT NULL   -- menor nível de 1 s dentro da janela, dB(A)
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts         INTEGER NOT NULL,  -- epoch UTC, fim da janela de integração
+    -- Cru, relativo ao fundo de escala digital. O offset de calibração é
+    -- aplicado na leitura, nunca na gravação: assim recalibrar reinterpreta o
+    -- histórico inteiro em vez de criar um degrau invisível nele.
+    laeq_dbfs  REAL    NOT NULL,
+    lamax_dbfs REAL    NOT NULL,
+    lamin_dbfs REAL    NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_leituras_ruido_ts ON leituras_ruido (ts);
+
+CREATE TABLE IF NOT EXISTS calibracoes (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts             INTEGER NOT NULL,  -- quando a calibração foi registrada
+    referencia_dba REAL    NOT NULL,  -- o que o medidor de referência mostrou
+    medido_dbfs    REAL    NOT NULL,  -- o que este monitor mediu na mesma janela
+    offset_db      REAL    NOT NULL,  -- a diferença, que vira o offset
+    minutos        INTEGER NOT NULL,  -- duração da janela comparada
+    janelas        INTEGER NOT NULL,  -- quantas leituras entraram na conta
+    observacao     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS configuracao (
+    chave         TEXT PRIMARY KEY,
+    valor         TEXT NOT NULL,
+    atualizado_em INTEGER NOT NULL
+);
 """
+
+# O offset de calibração do ruído vive no banco, não só no ambiente, porque o
+# dashboard precisa poder alterá-lo e o histórico precisa continuar coerente.
+CHAVE_OFFSET = "ruido_offset_db"
+
+# Valor de catálogo do INMP441: -26 dBFS para 94 dB SPL. Não é calibração.
+OFFSET_DE_CATALOGO = 120.0
 
 
 class MediaEnergetica:
@@ -85,6 +112,77 @@ def conectar() -> sqlite3.Connection:
 def criar_esquema() -> None:
     with conectar() as conexao:
         conexao.executescript(ESQUEMA)
+        _migrar(conexao)
+
+
+def _colunas(conexao, tabela: str) -> set[str]:
+    return {linha[1] for linha in conexao.execute(f"PRAGMA table_info({tabela})")}
+
+
+def _migrar(conexao) -> None:
+    """Passa o ruído de dB(A) calibrado para dBFS cru.
+
+    Guardar o valor já calibrado parece inofensivo até a primeira
+    recalibração: a partir dela o histórico mistura dois offsets no mesmo
+    gráfico, sem nada indicando isso. Guardando o dBFS cru e aplicando o
+    offset na leitura, recalibrar reinterpreta o passado inteiro de uma vez,
+    que é o comportamento correto.
+
+    A conversão usa o offset que estava em vigor quando as linhas foram
+    gravadas, registrado na própria configuração.
+    """
+    colunas = _colunas(conexao, "leituras_ruido")
+
+    if "laeq_dbfs" in colunas:
+        return
+
+    for coluna in ("laeq_dbfs", "lamax_dbfs", "lamin_dbfs"):
+        conexao.execute(f"ALTER TABLE leituras_ruido ADD COLUMN {coluna} REAL")
+
+    anterior = conexao.execute(
+        "SELECT valor FROM configuracao WHERE chave = ?", (CHAVE_OFFSET,)
+    ).fetchone()
+    offset = float(anterior["valor"]) if anterior else OFFSET_DE_CATALOGO
+
+    conexao.execute(
+        "UPDATE leituras_ruido SET laeq_dbfs = laeq - ?, "
+        "lamax_dbfs = lamax - ?, lamin_dbfs = lamin - ? "
+        "WHERE laeq_dbfs IS NULL",
+        (offset, offset, offset),
+    )
+
+    if anterior is None:
+        conexao.execute(
+            "INSERT INTO configuracao (chave, valor, atualizado_em) VALUES (?, ?, ?)",
+            (CHAVE_OFFSET, str(OFFSET_DE_CATALOGO), int(time.time())),
+        )
+
+    # As colunas calibradas saem: nulas para linha nova e congeladas para linha
+    # antiga, elas seriam uma segunda verdade esperando para divergir.
+    for coluna in ("laeq", "lamax", "lamin"):
+        if coluna in colunas:
+            conexao.execute(f"ALTER TABLE leituras_ruido DROP COLUMN {coluna}")
+
+
+def offset_ruido() -> float:
+    """O offset de calibração em vigor, em dB."""
+    with conectar() as conexao:
+        linha = conexao.execute(
+            "SELECT valor FROM configuracao WHERE chave = ?", (CHAVE_OFFSET,)
+        ).fetchone()
+
+    return float(linha["valor"]) if linha else OFFSET_DE_CATALOGO
+
+
+def definir_offset_ruido(valor: float) -> None:
+    """Grava um novo offset. O histórico inteiro passa a ser lido com ele."""
+    with conectar() as conexao:
+        conexao.execute(
+            "INSERT INTO configuracao (chave, valor, atualizado_em) VALUES (?, ?, ?) "
+            "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, "
+            "atualizado_em = excluded.atualizado_em",
+            (CHAVE_OFFSET, str(float(valor)), int(time.time())),
+        )
 
 
 def gravar(temperatura: float, umidade: float, ts: int | None = None) -> None:
@@ -141,54 +239,117 @@ def historico(desde: int, ate: int, max_pontos: int = 500) -> list[dict]:
 
 
 def gravar_ruido(
-    laeq: float, lamax: float, lamin: float, ts: int | None = None
+    laeq_dbfs: float, lamax_dbfs: float, lamin_dbfs: float, ts: int | None = None
 ) -> None:
+    """Grava a janela em dBFS cru, sem offset de calibração."""
     if ts is None:
         ts = int(time.time())
 
     with conectar() as conexao:
         conexao.execute(
-            "INSERT INTO leituras_ruido (ts, laeq, lamax, lamin)"
+            "INSERT INTO leituras_ruido (ts, laeq_dbfs, lamax_dbfs, lamin_dbfs)"
             " VALUES (?, ?, ?, ?)",
-            (ts, laeq, lamax, lamin),
+            (ts, laeq_dbfs, lamax_dbfs, lamin_dbfs),
         )
 
 
-def ultima_leitura_ruido() -> dict | None:
+def ultima_leitura_ruido(offset: float | None = None) -> dict | None:
+    """Última janela, já em dB(A) pelo offset em vigor."""
+    if offset is None:
+        offset = offset_ruido()
+
     with conectar() as conexao:
         linha = conexao.execute(
-            "SELECT ts, laeq, lamax, lamin FROM leituras_ruido"
-            " ORDER BY ts DESC LIMIT 1"
+            "SELECT ts,"
+            " ROUND(laeq_dbfs + ?, 1)  AS laeq,"
+            " ROUND(lamax_dbfs + ?, 1) AS lamax,"
+            " ROUND(lamin_dbfs + ?, 1) AS lamin"
+            " FROM leituras_ruido ORDER BY ts DESC LIMIT 1",
+            (offset, offset, offset),
         ).fetchone()
 
     return dict(linha) if linha else None
 
 
-def historico_ruido(desde: int, ate: int, max_pontos: int = 500) -> list[dict]:
+def historico_ruido(
+    desde: int, ate: int, max_pontos: int = 500, offset: float | None = None
+) -> list[dict]:
     """Como `historico`, mas somando energia ao reduzir os pontos.
 
     O máximo e o mínimo de cada faixa são o maior e o menor de verdade do
     período, não médias: é isso que mostra os picos que a média esconde.
     """
+    if offset is None:
+        offset = offset_ruido()
+
     intervalo = max(ate - desde, 1)
     faixa = max(-(-intervalo // max(max_pontos - 1, 1)), 1)
 
     with conectar() as conexao:
         linhas = conexao.execute(
             """
-            SELECT CAST(AVG(ts) AS INTEGER) AS ts,
-                   media_energetica(laeq)   AS laeq,
-                   ROUND(MAX(lamax), 1)     AS lamax,
-                   ROUND(MIN(lamin), 1)     AS lamin
+            SELECT CAST(AVG(ts) AS INTEGER)            AS ts,
+                   media_energetica(laeq_dbfs) + ?      AS laeq,
+                   ROUND(MAX(lamax_dbfs) + ?, 1)        AS lamax,
+                   ROUND(MIN(lamin_dbfs) + ?, 1)        AS lamin
               FROM leituras_ruido
              WHERE ts BETWEEN ? AND ?
           GROUP BY ts / ?
           ORDER BY ts
             """,
-            (desde, ate, faixa),
+            (offset, offset, offset, desde, ate, faixa),
         ).fetchall()
 
     return [dict(linha) for linha in linhas]
+
+
+def nivel_cru_do_periodo(desde: int, ate: int) -> tuple[float | None, int]:
+    """Média energética do dBFS cru no período, e quantas janelas entraram.
+
+    É isso que se compara com o medidor de referência: a mesma janela de tempo,
+    não um instante. Nível de ruído flutua a cada segundo, então comparar
+    leituras pontuais compara ruído com ruído.
+    """
+    with conectar() as conexao:
+        linha = conexao.execute(
+            "SELECT media_energetica(laeq_dbfs) AS media, COUNT(*) AS n"
+            " FROM leituras_ruido WHERE ts BETWEEN ? AND ?",
+            (desde, ate),
+        ).fetchone()
+
+    return (linha["media"], linha["n"]) if linha else (None, 0)
+
+
+def registrar_calibracao(
+    referencia_dba: float,
+    medido_dbfs: float,
+    minutos: int,
+    janelas: int,
+    observacao: str | None = None,
+) -> float:
+    """Grava uma calibração e passa a usar o offset dela. Devolve o offset."""
+    offset = round(referencia_dba - medido_dbfs, 2)
+
+    with conectar() as conexao:
+        conexao.execute(
+            "INSERT INTO calibracoes"
+            " (ts, referencia_dba, medido_dbfs, offset_db, minutos, janelas, observacao)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (int(time.time()), referencia_dba, medido_dbfs, offset,
+             minutos, janelas, observacao),
+        )
+
+    definir_offset_ruido(offset)
+    return offset
+
+
+def ultima_calibracao() -> dict | None:
+    with conectar() as conexao:
+        linha = conexao.execute(
+            "SELECT * FROM calibracoes ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+
+    return dict(linha) if linha else None
 
 
 def total_leituras_ruido() -> int:
