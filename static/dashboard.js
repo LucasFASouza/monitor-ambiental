@@ -1,7 +1,8 @@
 /* Dashboard do monitor ambiental.
  *
- * Busca /api/latest e /api/history, preenche os cartões e desenha os dois
- * gráficos. Sem framework e sem build: o arquivo é servido como está.
+ * Busca /api/latest, /api/history e /api/ruido/history, preenche os cartões e
+ * desenha os gráficos. Sem framework e sem build: o arquivo é servido como
+ * está.
  */
 
 (() => {
@@ -10,14 +11,17 @@
   const ROTULOS = { bom: "Bom", atencao: "Atenção", ruim: "Ruim" };
   const NIVEIS = ["bom", "atencao", "ruim"];
 
+  const COR_TEMPERATURA = "#e07a3f";
+  const COR_UMIDADE = "#3f8fe0";
+  const COR_RUIDO = "#9b7fd4";
+
   // O coletor grava a cada `intervalo` segundos; atualizar bem mais rápido que
   // isso só gastaria rede sem trazer dado novo.
   const intervaloColeta = Number(document.body.dataset.intervalo) || 60;
   const intervaloAtualizacao = Math.min(Math.max(intervaloColeta, 15), 60) * 1000;
 
   let horasSelecionadas = 24;
-  let graficoTemperatura = null;
-  let graficoUmidade = null;
+  const graficos = {};
 
   const elemento = (id) => document.getElementById(id);
 
@@ -53,6 +57,37 @@
 
   // --- Cartões --------------------------------------------------------------
 
+  function preencherRuido(ruido) {
+    const valor = elemento("valor-ruido");
+    const detalhe = elemento("detalhe-ruido");
+    const selo = elemento("selo-ruido");
+    const cartao = elemento("cartao-ruido");
+
+    // O coletor de ruído é um processo à parte: pode não estar rodando sem
+    // que isso afete a medição de ar.
+    if (!ruido || !ruido.leitura) {
+      valor.textContent = "--";
+      detalhe.innerHTML = "&nbsp;";
+      selo.textContent = "Sem dados";
+      aplicarNivel(selo, null);
+      aplicarNivel(cartao, null);
+      elemento("aviso-calibracao").hidden = true;
+      return;
+    }
+
+    const { leitura, avaliacao, atualizado, calibrado } = ruido;
+
+    valor.textContent = leitura.laeq.toFixed(1);
+    detalhe.textContent =
+      `máx ${leitura.lamax.toFixed(1)} · mín ${leitura.lamin.toFixed(1)}`;
+
+    selo.textContent = atualizado ? ROTULOS[avaliacao] : "Parado";
+    aplicarNivel(selo, atualizado ? avaliacao : "ruim");
+    aplicarNivel(cartao, atualizado ? avaliacao : null);
+
+    elemento("aviso-calibracao").hidden = calibrado;
+  }
+
   function preencherCartoes(dados) {
     const indicador = elemento("indicador");
 
@@ -63,14 +98,13 @@
       mostrarAviso(
         "Nenhuma leitura no banco ainda. O coletor já está rodando?"
       );
+      preencherRuido(dados.ruido);
       return;
     }
 
     const { leitura, avaliacao, atualizado } = dados;
 
-    // O driver de kernel devolve décimos de grau; a umidade vem inteira.
-    elemento("valor-temperatura").textContent =
-      leitura.temperatura.toFixed(1);
+    elemento("valor-temperatura").textContent = leitura.temperatura.toFixed(1);
     elemento("valor-umidade").textContent = leitura.umidade.toFixed(0);
     elemento("valor-geral").textContent = ROTULOS[avaliacao.geral];
 
@@ -99,37 +133,43 @@
         ? ""
         : "A última leitura está velha. O coletor pode ter parado."
     );
+
+    preencherRuido(dados.ruido);
   }
 
   // --- Gráficos -------------------------------------------------------------
 
-  function criarGrafico(canvas, rotulo, corLinha, unidade) {
+  function criarGrafico(canvas, series, unidade) {
     return new Chart(canvas, {
       type: "line",
       data: {
         labels: [],
-        datasets: [
-          {
-            label: rotulo,
-            data: [],
-            borderColor: corLinha,
-            backgroundColor: "transparent",
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            tension: 0.25,
-          },
-        ],
+        datasets: series.map((serie) => ({
+          label: serie.rotulo,
+          data: [],
+          borderColor: serie.cor,
+          backgroundColor: "transparent",
+          borderWidth: serie.tracejado ? 1 : 2,
+          borderDash: serie.tracejado ? [4, 3] : [],
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.25,
+        })),
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: false },
+          // Com duas séries a legenda passa a fazer falta.
+          legend: {
+            display: series.length > 1,
+            labels: { color: cor("--texto-fraco"), boxHeight: 1 },
+          },
           tooltip: {
             callbacks: {
-              label: (item) => `${rotulo}: ${item.parsed.y} ${unidade}`,
+              label: (item) =>
+                `${item.dataset.label}: ${item.parsed.y} ${unidade}`,
             },
           },
         },
@@ -155,9 +195,13 @@
     });
   }
 
-  function atualizarGrafico(grafico, rotulos, valores) {
+  function atualizarGrafico(grafico, rotulos, colunas) {
     grafico.data.labels = rotulos;
-    grafico.data.datasets[0].data = valores;
+
+    colunas.forEach((valores, indice) => {
+      grafico.data.datasets[indice].data = valores;
+    });
+
     grafico.update("none");
   }
 
@@ -179,22 +223,37 @@
       formatarRotulo(l.data_hora, dados.horas)
     );
 
-    atualizarGrafico(
-      graficoTemperatura,
-      rotulos,
-      dados.leituras.map((l) => l.temperatura)
+    atualizarGrafico(graficos.temperatura, rotulos, [
+      dados.leituras.map((l) => l.temperatura),
+    ]);
+
+    atualizarGrafico(graficos.umidade, rotulos, [
+      dados.leituras.map((l) => l.umidade),
+    ]);
+  }
+
+  async function carregarHistoricoRuido() {
+    const dados = await buscarJson(
+      `/api/ruido/history?horas=${horasSelecionadas}`
     );
 
     atualizarGrafico(
-      graficoUmidade,
-      rotulos,
-      dados.leituras.map((l) => l.umidade)
+      graficos.ruido,
+      dados.leituras.map((l) => formatarRotulo(l.data_hora, dados.horas)),
+      [
+        dados.leituras.map((l) => l.laeq),
+        dados.leituras.map((l) => l.lamax),
+      ]
     );
   }
 
   async function atualizarTudo() {
     try {
-      await Promise.all([carregarUltima(), carregarHistorico()]);
+      await Promise.all([
+        carregarUltima(),
+        carregarHistorico(),
+        carregarHistoricoRuido(),
+      ]);
     } catch (erro) {
       const indicador = elemento("indicador");
       indicador.textContent = "Offline";
@@ -215,7 +274,8 @@
       }
 
       horasSelecionadas = Number(botao.dataset.horas);
-      carregarHistorico().catch(() => {});
+
+      Promise.all([carregarHistorico(), carregarHistoricoRuido()]).catch(() => {});
     });
   }
 
@@ -225,28 +285,36 @@
     window
       .matchMedia("(prefers-color-scheme: dark)")
       .addEventListener("change", () => {
-        for (const grafico of [graficoTemperatura, graficoUmidade]) {
+        for (const grafico of Object.values(graficos)) {
           grafico.options.scales.x.grid.color = cor("--grade");
           grafico.options.scales.y.grid.color = cor("--grade");
           grafico.options.scales.x.ticks.color = cor("--texto-fraco");
           grafico.options.scales.y.ticks.color = cor("--texto-fraco");
+          grafico.options.plugins.legend.labels.color = cor("--texto-fraco");
           grafico.update("none");
         }
       });
   }
 
-  graficoTemperatura = criarGrafico(
+  graficos.temperatura = criarGrafico(
     elemento("grafico-temperatura"),
-    "Temperatura",
-    "#e07a3f",
+    [{ rotulo: "Temperatura", cor: COR_TEMPERATURA }],
     "°C"
   );
 
-  graficoUmidade = criarGrafico(
+  graficos.umidade = criarGrafico(
     elemento("grafico-umidade"),
-    "Umidade",
-    "#3f8fe0",
+    [{ rotulo: "Umidade", cor: COR_UMIDADE }],
     "%"
+  );
+
+  graficos.ruido = criarGrafico(
+    elemento("grafico-ruido"),
+    [
+      { rotulo: "LAeq", cor: COR_RUIDO },
+      { rotulo: "Máximo", cor: COR_RUIDO, tracejado: true },
+    ],
+    "dB(A)"
   );
 
   ligarPeriodos();

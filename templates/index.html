@@ -6,12 +6,12 @@
   <title>Monitor Ambiental</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body data-intervalo="{{ intervalo }}">
+<body data-intervalo="{{ intervalo }}" data-janela-ruido="{{ janela_ruido }}">
 
   <header class="cabecalho">
     <div>
       <h1>Monitor Ambiental</h1>
-      <p class="subtitulo">Temperatura e umidade &middot; DHT11</p>
+      <p class="subtitulo">Temperatura, umidade e ru&iacute;do &middot; DHT11 + INMP441</p>
     </div>
     <div class="estado">
       <span id="indicador" class="indicador">Carregando</span>
@@ -31,6 +31,13 @@
         <h2>Umidade</h2>
         <p class="valor"><span id="valor-umidade">--</span><span class="unidade">%</span></p>
         <p class="selo" id="selo-umidade">--</p>
+      </article>
+
+      <article class="cartao" id="cartao-ruido">
+        <h2>Ru&iacute;do</h2>
+        <p class="valor"><span id="valor-ruido">--</span><span class="unidade">dB(A)</span></p>
+        <p class="detalhe" id="detalhe-ruido">&nbsp;</p>
+        <p class="selo" id="selo-ruido">--</p>
       </article>
 
       <article class="cartao" id="cartao-geral">
@@ -57,13 +64,23 @@
         <h2>Histórico de umidade</h2>
         <div class="area-grafico"><canvas id="grafico-umidade"></canvas></div>
       </article>
+
+      <article class="painel">
+        <h2>Histórico de ruído</h2>
+        <div class="area-grafico"><canvas id="grafico-ruido"></canvas></div>
+      </article>
     </section>
 
     <p class="aviso" id="aviso" hidden></p>
   </main>
 
   <footer class="rodape">
-    Os limites de Bom, Atenção e Ruim ainda são provisórios.
+    <p>Os limites de Bom, Atenção e Ruim ainda são provisórios.</p>
+    <p id="aviso-calibracao" hidden>
+      O nível de ruído usa o offset de catálogo do microfone, sem calibração
+      contra referência. O valor absoluto é indicativo: confie na variação,
+      não no número.
+    </p>
   </footer>
 
   <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>

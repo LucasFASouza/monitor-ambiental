@@ -130,6 +130,13 @@ main { max-width: 1100px; margin: 0 auto; }
   font-weight: 500;
 }
 
+.detalhe {
+  margin: 6px 0 0;
+  color: var(--texto-fraco);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .selo {
   display: inline-block;
   margin: 12px 0 0;
@@ -201,6 +208,10 @@ main { max-width: 1100px; margin: 0 auto; }
   color: var(--texto-fraco);
   font-size: 0.8125rem;
 }
+
+.rodape p { margin: 0 0 6px; }
+
+#aviso-calibracao { max-width: 70ch; }
 
 @media (max-width: 640px) {
   body { padding: 16px; }

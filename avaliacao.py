@@ -28,6 +28,10 @@ def condicao_geral(*niveis: str) -> str:
     return max(niveis, key=NIVEIS.index)
 
 
+def avaliar_ruido(laeq: float) -> str:
+    return classificar("ruido", laeq)
+
+
 def avaliar(temperatura: float, umidade: float) -> dict:
     nivel_temperatura = classificar("temperatura", temperatura)
     nivel_umidade = classificar("umidade", umidade)

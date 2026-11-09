@@ -1,0 +1,25 @@
+# Coletor de ruído: mede o microfone I2S e grava um LAeq por janela.
+#
+#   sudo cp deploy/monitor-coletor-ruido.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now monitor-coletor-ruido
+#   journalctl -u monitor-coletor-ruido -f
+
+[Unit]
+Description=Monitor Ambiental - coletor de ruído (INMP441)
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=piuser
+# A captura passa pelo ALSA, que exige pertencer ao grupo audio.
+SupplementaryGroups=audio
+WorkingDirectory=/home/piuser/monitor-ambiental
+ExecStart=/home/piuser/monitor-ambiental/.venv/bin/python collector_ruido.py
+Restart=always
+RestartSec=10
+
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -11,6 +11,7 @@ Para olhar o banco na mão:
       FROM leituras ORDER BY ts DESC LIMIT 10;
 """
 
+import math
 import sqlite3
 import time
 
@@ -25,7 +26,44 @@ CREATE TABLE IF NOT EXISTS leituras (
 );
 
 CREATE INDEX IF NOT EXISTS idx_leituras_ts ON leituras (ts);
+
+CREATE TABLE IF NOT EXISTS leituras_ruido (
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts    INTEGER NOT NULL,  -- epoch UTC, fim da janela de integração
+    laeq  REAL    NOT NULL,  -- nível equivalente da janela, dB(A)
+    lamax REAL    NOT NULL,  -- maior nível de 1 s dentro da janela, dB(A)
+    lamin REAL    NOT NULL   -- menor nível de 1 s dentro da janela, dB(A)
+);
+
+CREATE INDEX IF NOT EXISTS idx_leituras_ruido_ts ON leituras_ruido (ts);
 """
+
+
+class MediaEnergetica:
+    """Agregado de SQL que faz a média de decibéis pela energia.
+
+    Existe porque AVG() sobre decibel dá resultado errado: a escala é
+    logarítmica, então 40 dB e 80 dB não têm média 60 dB, têm quase 80. Como o
+    histórico é reduzido agrupando faixas de tempo, a redução precisa somar
+    energia, não aritmética.
+    """
+
+    def __init__(self):
+        self._soma = 0.0
+        self._quantidade = 0
+
+    def step(self, valor):
+        if valor is None:
+            return
+
+        self._soma += 10.0 ** (valor / 10.0)
+        self._quantidade += 1
+
+    def finalize(self):
+        if self._quantidade == 0:
+            return None
+
+        return round(10.0 * math.log10(self._soma / self._quantidade), 1)
 
 
 def conectar() -> sqlite3.Connection:
@@ -38,6 +76,8 @@ def conectar() -> sqlite3.Connection:
     # outro. São dois processos no mesmo arquivo, então isso não é opcional.
     conexao.execute("PRAGMA journal_mode = WAL")
     conexao.execute("PRAGMA synchronous = NORMAL")
+
+    conexao.create_aggregate("media_energetica", 1, MediaEnergetica)
 
     return conexao
 
@@ -100,6 +140,62 @@ def historico(desde: int, ate: int, max_pontos: int = 500) -> list[dict]:
     return [dict(linha) for linha in linhas]
 
 
+def gravar_ruido(
+    laeq: float, lamax: float, lamin: float, ts: int | None = None
+) -> None:
+    if ts is None:
+        ts = int(time.time())
+
+    with conectar() as conexao:
+        conexao.execute(
+            "INSERT INTO leituras_ruido (ts, laeq, lamax, lamin)"
+            " VALUES (?, ?, ?, ?)",
+            (ts, laeq, lamax, lamin),
+        )
+
+
+def ultima_leitura_ruido() -> dict | None:
+    with conectar() as conexao:
+        linha = conexao.execute(
+            "SELECT ts, laeq, lamax, lamin FROM leituras_ruido"
+            " ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+
+    return dict(linha) if linha else None
+
+
+def historico_ruido(desde: int, ate: int, max_pontos: int = 500) -> list[dict]:
+    """Como `historico`, mas somando energia ao reduzir os pontos.
+
+    O máximo e o mínimo de cada faixa são o maior e o menor de verdade do
+    período, não médias: é isso que mostra os picos que a média esconde.
+    """
+    intervalo = max(ate - desde, 1)
+    faixa = max(-(-intervalo // max(max_pontos - 1, 1)), 1)
+
+    with conectar() as conexao:
+        linhas = conexao.execute(
+            """
+            SELECT CAST(AVG(ts) AS INTEGER) AS ts,
+                   media_energetica(laeq)   AS laeq,
+                   ROUND(MAX(lamax), 1)     AS lamax,
+                   ROUND(MIN(lamin), 1)     AS lamin
+              FROM leituras_ruido
+             WHERE ts BETWEEN ? AND ?
+          GROUP BY ts / ?
+          ORDER BY ts
+            """,
+            (desde, ate, faixa),
+        ).fetchall()
+
+    return [dict(linha) for linha in linhas]
+
+
+def total_leituras_ruido() -> int:
+    with conectar() as conexao:
+        return conexao.execute("SELECT COUNT(*) FROM leituras_ruido").fetchone()[0]
+
+
 def total_leituras() -> int:
     with conectar() as conexao:
         return conexao.execute("SELECT COUNT(*) FROM leituras").fetchone()[0]
@@ -108,4 +204,5 @@ def total_leituras() -> int:
 if __name__ == "__main__":
     criar_esquema()
     print(f"Banco pronto em {config.DB_PATH}")
-    print(f"Leituras armazenadas: {total_leituras()}")
+    print(f"Leituras de ar armazenadas:    {total_leituras()}")
+    print(f"Leituras de ruído armazenadas: {total_leituras_ruido()}")
