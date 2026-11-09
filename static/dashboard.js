@@ -40,11 +40,10 @@
     },
   };
 
-  /* O limite normativo atravessa a área e a faixa inteira se rotula uma vez
-     na calha à direita. Dentro da área o rótulo colidiria com a série, e dois
-     inteiros nus — "25" e "18" — não diziam nem a unidade nem que eram
-     limites. Com o eixo Y sem valores, este é o único lugar onde a escala é
-     nomeada. */
+  /* Cada limite normativo atravessa a área e se rotula na calha à direita,
+     com a unidade. Dentro da área o rótulo colidiria com a série; sem a
+     unidade sobravam dois inteiros nus. Com o eixo Y sem valores, esta calha é
+     o único lugar onde a escala é nomeada. */
   const reguasDeLimite = {
     id: "limites",
     afterDatasetsDraw(gr) {
@@ -53,9 +52,11 @@
 
       const { ctx, chartArea: area, scales } = gr;
       const tinta = cor("--limite");
-      const faixa = gr.options.plugins.limites.faixa;
 
       ctx.save();
+      ctx.font = `13px ${fonte}`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
       ctx.strokeStyle = tinta;
       ctx.lineWidth = 1;
 
@@ -67,22 +68,28 @@
         ctx.stroke();
       }
 
-      if (faixa) {
-        const topo = scales.y.getPixelForValue(faixa.ate);
-        const base = scales.y.getPixelForValue(faixa.de);
-        ctx.font = `13px ${fonte}`;
-        ctx.textBaseline = "middle";
-        ctx.textAlign = "left";
-        ctx.fillStyle = tinta;
-        ctx.fillText(faixa.rotulo, area.right + 10, (topo + base) / 2);
+      /* A linha sempre aparece; o rótulo pode ser pulado. Dois rótulos a menos
+         de 16px um do outro se sobrepõem, e na temperatura as bordas do
+         recomendado e do vermelho ficam a 2 °C — cerca de 22px. Desenha por
+         prioridade, para que o limite do recomendado nunca perca o rótulo
+         para o do vermelho. */
+      ctx.fillStyle = tinta;
+      const postos = [];
+      const porPrioridade = [...reguas].sort((a, b) => a.prioridade - b.prioridade);
+
+      for (const r of porPrioridade) {
+        const y = scales.y.getPixelForValue(r.valor);
+        if (postos.some((outro) => Math.abs(outro - y) < 16)) continue;
+        ctx.fillText(r.rotulo, area.right + 10, y);
+        postos.push(y);
       }
 
       ctx.restore();
     },
   };
 
-  /* A calha precisa caber o rótulo, que muda de largura por grandeza:
-     "18–25 °C" e "45–65 dB(A)" não medem o mesmo. */
+  /* A calha precisa caber o rótulo mais largo, que muda por grandeza:
+     "25 °C" e "65 dB(A)" não medem o mesmo. */
   const regua = document.createElement("canvas").getContext("2d");
   const larguraDoRotulo = (texto) => {
     regua.font = `13px ${fonte}`;
@@ -124,7 +131,7 @@
             // plotagem. Antes eram 16px mais a coluna de rótulos do eixo, e a
             // régua ficava a 50px da curva que deveria qualificar.
             left: 14,
-            right: d.faixa ? larguraDoRotulo(d.faixa.rotulo) + 18 : 18,
+            right: Math.max(18, ...d.reguas.map((r) => larguraDoRotulo(r.rotulo) + 18)),
             top: 6,
           },
         },
@@ -132,7 +139,7 @@
         plugins: {
           legend: { display: false },
           faixas: { lista: d.faixas },
-          limites: { lista: d.reguas, faixa: d.faixa },
+          limites: { lista: d.reguas },
           tooltip: {
             backgroundColor: cor("--tinta"),
             padding: 10,

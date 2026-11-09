@@ -201,6 +201,23 @@ main {
   padding: 0 var(--e6);
 }
 
+/* --- a resposta da página, só no celular ----------------------------------- */
+/* Em coluna única a grandeza fora da faixa fica abaixo da dobra, e sem esta
+   frase ninguém sabe que há algo para rolar. No desktop as três leituras
+   estão à vista de uma vez e a frase só repetiria o que já se lê, poluindo o
+   topo da tela. A cor reforça, nunca carrega sozinha — a frase diz o que está
+   fora e para que lado. */
+.resumo {
+  display: none;
+  max-width: var(--medida);
+  font-size: var(--t-titulo);
+  line-height: 1.5;
+}
+
+.resumo.n-bom { color: var(--bom); }
+.resumo.n-atencao { color: var(--atencao); }
+.resumo.n-ruim { color: var(--ruim); }
+
 .grandeza {
   display: grid;
   grid-template-columns: 290px 1fr;
@@ -466,6 +483,7 @@ footer {
   footer { padding: var(--e5) var(--e4) var(--e6); }
 
   .barra-filtro-opcoes { margin-left: 0; }
+  .resumo { display: block; padding: var(--e4) 0 var(--e3); }
 
   /* O gráfico passa a vir abaixo do texto: lado a lado em 360px espremeria
      os dois até nenhum ser legível. */

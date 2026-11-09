@@ -255,10 +255,21 @@ rótulo embaixo, não 14px cinza no meio da prosa.
 O componente central. Construído em `grafico.py`, no servidor.
 
 Anatomia, de fora para dentro: régua de faixas colorida encostada na área de
-plotagem; réguas de limite normativo atravessando a área; o intervalo de
-referência rotulado uma vez numa calha à direita, com a unidade — "18–25 °C",
-"40–60 %", "45–65 dB(A)"; eixo do tempo embaixo; envelope de mínimo e máximo
-por balde; e a média por cima de tudo.
+plotagem; réguas de limite normativo atravessando a área, cada uma rotulada na
+calha à direita com o próprio valor e a unidade — "25 °C" e "18 °C", "60 %" e
+"40 %", "65 dB(A)" e "45 dB(A)"; eixo do tempo embaixo; envelope de mínimo e
+máximo por balde; e a média por cima de tudo.
+
+As réguas têm duas camadas. As bordas do recomendado aparecem sempre. As bordas
+do vermelho — 16 e 28 °C, 30 e 70 % — só entram quando a faixa vermelha está em
+vista, pela mesma razão que ela: fora disso coincidem com os limites da janela e
+seriam desenhadas em cima da moldura. No ruído não há camada extra, porque o
+teto do vermelho é o próprio 65 dB(A).
+
+A linha sempre aparece; o rótulo pode ser pulado. Dois rótulos a menos de 16px
+se sobrepõem, e na temperatura as bordas do recomendado e do vermelho ficam a
+2 °C. Desenha por prioridade, para que o limite do recomendado nunca perca o
+rótulo para o do vermelho.
 
 **O eixo Y não imprime valor nenhum.** A escala é dada pela régua de faixas e
 por esse rótulo. A coluna de marcas numéricas repetia a unidade a cada linha,
@@ -280,6 +291,12 @@ celular de 375.
 ## Do's and Don'ts
 
 **Faça** o estado ser dito em frase, em português, antes de qualquer cor.
+
+**Faça**, no celular, a página responder numa frase logo abaixo do cabeçalho:
+o que está fora da faixa, para que lado, e que o resto está dentro. Em coluna
+única a grandeza fora da faixa fica abaixo da dobra e nada diz que há o que
+rolar. No desktop a frase não existe: as três leituras estão à vista de uma vez
+e ela só repetiria o que já se lê.
 
 **Faça** todo limite exibido carregar a norma que o sustenta. Limite sem norma
 vigente diz que não tem.

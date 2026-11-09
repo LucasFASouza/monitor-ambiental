@@ -176,6 +176,8 @@ def _faixas_do_eixo(grandeza: str, ymin: float, ymax: float):
 # com a norma que as sustenta dita por extenso para quem não a conhece.
 GRANDEZAS = {
     "temperatura": dict(
+        curto="temperatura",
+        artigo="a",
         nome="Temperatura",
         unidade="°C",
         casas=1,
@@ -189,6 +191,8 @@ GRANDEZAS = {
               "health guidelines da OMS (2018), por caminho independente.",
     ),
     "umidade": dict(
+        curto="umidade",
+        artigo="a",
         nome="Umidade relativa",
         unidade="%",
         casas=0,
@@ -203,6 +207,8 @@ GRANDEZAS = {
               "não norma.",
     ),
     "ruido": dict(
+        curto="ruído",
+        artigo="o",
         nome="Ruído",
         unidade="dB(A)",
         casas=1,
@@ -292,27 +298,89 @@ def _classificar(grandeza: str, valor: float) -> tuple[str, str]:
     return nivel, CONDICAO[nivel]
 
 
-def _rotulo_da_faixa(d: dict, ymin: float, ymax: float) -> dict | None:
-    """O intervalo de referência da grandeza, com a unidade, num rótulo só.
+def _lista(itens: list[str]) -> str:
+    """a, b e c — sem a vírgula de Oxford, que não existe em português."""
+    if len(itens) == 1:
+        return itens[0]
+    return f"{', '.join(itens[:-1])} e {itens[-1]}"
 
-    Antes a calha mostrava "25" e "18": dois inteiros sem unidade, ao lado de
-    um eixo que já dizia "25 °C". Com o eixo sem valores, este rótulo passa a
-    ser o único lugar onde a escala é nomeada.
+
+def resumo_geral(blocos: list[dict]) -> str | None:
+    """A resposta da página numa frase: o que está fora, e o que está dentro.
+
+    O view model já computava `geral` e `fora`, e nenhum template os
+    referenciava. No celular isso deixava a única grandeza fora da faixa 238px
+    abaixo da dobra, sem nada acima dizendo que havia algo para ver.
+
+    Só conta grandeza com leitura atual: leitura velha não descreve o agora.
     """
-    visiveis = sorted((v, r) for v, r in d["reguas"] if ymin <= v <= ymax)
+    frescos = [b for b in blocos if b["atualizado"] and b["nivel"]]
 
-    if not visiveis:
+    if not frescos:
         return None
 
-    if len(visiveis) == 1:
-        valor, rotulo = visiveis[0]
-        return {"de": valor, "ate": valor, "rotulo": f"{rotulo} {d['unidade']}"}
+    fora = [b for b in frescos if b["nivel"] != "bom"]
+    dentro = [b for b in frescos if b["nivel"] == "bom"]
 
-    return {
-        "de": visiveis[0][0],
-        "ate": visiveis[-1][0],
-        "rotulo": f"{visiveis[0][1]}\u2013{visiveis[-1][1]} {d['unidade']}",
-    }
+    def direcao(b):
+        return "abaixo" if "abaixo" in b["frase"] else "acima"
+
+    if not fora:
+        nomes = _lista([b["curto"] for b in frescos])
+        return f"{nomes.capitalize()} estão dentro das faixas recomendadas."
+
+    # Cada grandeza com a própria direção: uma pode estar acima e a outra
+    # abaixo, e dizer só "fora da faixa" perderia essa diferença. O verbo vem
+    # depois do primeiro sujeito e fica elíptico nos seguintes, que é como a
+    # enumeração se escreve em português.
+    primeiro, *resto = fora
+    partes = [f"{primeiro['artigo']} {primeiro['curto']} está {direcao(primeiro)}"]
+    partes += [f"{b['artigo']} {b['curto']} {direcao(b)}" for b in resto]
+
+    frase = f"{_lista(partes).capitalize()} da faixa recomendada."
+
+    if dentro:
+        nomes = _lista([f"{b['artigo']} {b['curto']}" for b in dentro])
+        verbo = "está" if len(dentro) == 1 else "estão"
+        frase += f" {nomes.capitalize()} {verbo} dentro."
+
+    return frase
+
+
+def _reguas_visiveis(grandeza: str, d: dict, ymin: float, ymax: float) -> list[dict]:
+    """As linhas de referência que cabem na janela, com valor e unidade.
+
+    São duas camadas. As bordas da faixa boa aparecem sempre: são o limite do
+    recomendado, e é delas que a pessoa precisa para saber se está adequado.
+    As bordas do vermelho só entram quando a faixa vermelha está em vista —
+    fora disso elas coincidem com os limites da janela e seriam desenhadas em
+    cima da moldura.
+    """
+    # Prioridade 0 para as bordas do recomendado, 1 para as do vermelho: quando
+    # dois rótulos colidem na calha, o cliente desenha o de prioridade menor e
+    # pula o outro. Na temperatura 16 e 18 °C ficam a 22px um do outro.
+    valores = {v: (r, 0) for v, r in d["reguas"]}
+
+    at_de, at_ate = config.LIMITES[grandeza]["atencao"]
+    bandas = _bandas(grandeza)
+    vermelho_a_vista = any(
+        n == "ruim" and min(ate, ymax) > max(de, ymin)
+        for de, ate, n in bandas
+    )
+
+    if vermelho_a_vista:
+        for limite in (at_de, at_ate):
+            # A banda inferior pode não existir — no ruído só o teto conta — e
+            # o teto pode já estar na camada de cima, como os 65 dB(A).
+            if limite <= 0 or limite in valores:
+                continue
+            valores[limite] = (f"{limite:g}", 1)
+
+    return [
+        {"valor": v, "rotulo": f"{r} {d['unidade']}", "prioridade": p}
+        for v, (r, p) in sorted(valores.items(), reverse=True)
+        if ymin <= v <= ymax
+    ]
 
 
 def montar(horas: int = 24) -> dict:
@@ -381,6 +449,8 @@ def montar(horas: int = 24) -> dict:
         blocos.append({
             "chave": chave,
             "nome": d["nome"],
+            "curto": d["curto"],
+            "artigo": d["artigo"],
             "atualizado": fresco,
             "idade": None if idade_do_bloco is None else duracao(idade_do_bloco),
             "unidade": d["unidade"],
@@ -398,12 +468,10 @@ def montar(horas: int = 24) -> dict:
                 "passo": 5 if (janela_max - janela_min) <= 45 else 10,
                 "unidade": d["unidade"],
                 "faixas": _faixas_visiveis(chave, janela_min, janela_max),
-                "reguas": [{"valor": v, "rotulo": r} for v, r in d["reguas"]
-                           if janela_min <= v <= janela_max],
-                # Um rótulo só para a faixa inteira, no lugar de dois inteiros
-                # nus na calha. O eixo Y não imprime mais valor nenhum, então
-                # é aqui que a unidade aparece.
-                "faixa": _rotulo_da_faixa(d, janela_min, janela_max),
+                # Um rótulo por linha de referência, cada um com a unidade.
+                # Com o eixo Y sem valores, é aqui que a escala é nomeada: sem
+                # a unidade sobravam dois inteiros nus na calha.
+                "reguas": _reguas_visiveis(chave, d, janela_min, janela_max),
             },
             "valor": None if valor is None else f"{valor:.{d['casas']}f}".replace(".", ","),
             "nivel": nivel,
@@ -431,6 +499,7 @@ def montar(horas: int = 24) -> dict:
         "blocos": blocos,
         "geral": geral,
         "fora": fora,
+        "resumo": resumo_geral(blocos),
         "horas": horas,
         "periodos": PERIODOS,
         "idade_segundos": idade_ar,

@@ -64,6 +64,13 @@
 </header>
 
 <main class="conteudo">
+  {%- if visao.resumo %}
+    {# A resposta da página, antes de qualquer controle. No celular a grandeza
+       fora da faixa ficava 238px abaixo da dobra, sem nada acima dizendo que
+       havia algo para ver. #}
+    <p class="resumo n-{{ visao.geral }}">{{ visao.resumo }}</p>
+  {%- endif %}
+
   <nav class="barra-filtro" aria-label="Período exibido">
     <span class="barra-filtro-rotulo">
       <svg aria-hidden="true"><use href="#i-relogio"></use></svg>
