@@ -81,19 +81,32 @@ Implementada por FFT, não por filtro recursivo: em Python puro um filtro IIR n�
 dá conta de 48.000 amostras por segundo. A implementação foi conferida contra a
 tabela de valores da própria norma, com diferença máxima de **0,13 dB**.
 
-### A limitação honesta: o número absoluto não está calibrado
+### A calibração: de dBFS para dB(A)
 
 O microfone mede em **dBFS** — decibéis relativos ao fundo de escala do próprio
 circuito. Para virar dB(A) é preciso somar um *offset* levantado contra um
-medidor de referência.
+medidor de referência. O valor de catálogo do INMP441 (120,0 dB) é ponto de
+partida, não medição.
 
-Enquanto isso não for feito, o aparelho usa o valor de catálogo do INMP441
-(120,0 dB), que **não é medição**. Consequência prática, e isto precisa aparecer
-na apresentação:
+**A calibração foi feita.** O registro, com rastreabilidade completa:
 
-> A variação do gráfico é confiável. O número absoluto é indicativo.
+| | |
+|---|---|
+| Referência mostrou | 30,0 dB(A) |
+| Este monitor mediu | −69,1 dBFS |
+| Offset gravado | **+99,1 dB** (catálogo era 120,0) |
+| Janela comparada | 5 minutos, 5 leituras |
+| Instrumento de referência | medidor de navegador (decibelmeter.org) |
 
-O aparelho diz isso na própria tela, e não esconde.
+A apresentação deve dizer **qual foi a referência**, porque isso define o grau
+de confiança do número: um medidor de navegador não é instrumento com
+certificado de calibração, e em níveis baixos ele esbarra no próprio piso de
+ruído. A faixa de incerteza do valor absoluto é a do instrumento usado para
+ancorá-lo. Refazer a comparação contra um decibelímetro Tipo 2 apertaria essa
+incerteza, e o aparelho aceita recalibração a qualquer momento.
+
+O campo de instrumento existe no formulário exatamente para que essa informação
+não se perca — e foi ele que permitiu escrever este parágrafo.
 
 ### O que o microfone **não** resolve
 
@@ -162,7 +175,7 @@ sustenta ou não.
 | Grandeza | Faixa recomendada | Fonte |
 |---|---|---|
 | Temperatura | 18 a 25 °C | **NR-17, item 17.8.4.2**, na redação da Portaria MTP 423/2021 |
-| Umidade relativa | 40 a 60 % | **sem norma brasileira vigente** — ver ressalva |
+| Umidade relativa | 40 a 60 % | convergência de **OSHA/ASHRAE 55** com a ANVISA revogada — ver abaixo |
 | Ruído | até 45 dB(A), teto de 65 dB(A) | **NBR 10152:2017** (escritório privativo) e **NR-17, item 17.8.4.1.2** |
 
 Notas:
@@ -176,24 +189,34 @@ Notas:
 - Os **45 dB(A)** da NBR 10152:2017 são o nível de conforto para escritório
   privativo, mais exigente que o teto da NR-17.
 
-### Ressalva sobre umidade — precisa estar na apresentação
+### A umidade: como a faixa foi definida
 
-**A umidade é a grandeza com menos respaldo normativo direto, e isso é uma
-fragilidade conhecida do projeto.**
+A umidade **não tem norma brasileira vigente com faixa numérica**, e a definição
+foi feita por convergência de fontes — o que precisa ser apresentado como
+escolha fundamentada, não como lacuna.
 
-- A NR-17 **perdeu o número de umidade** na revisão de 2021. O item manda
-  controlar a umidade, mas não diz qual faixa.
-- A **RE 09/2003 da ANVISA**, que trazia a faixa clássica de 40 a 65 %, foi
-  **revogada em julho de 2024** pela RDC 886/2024.
-- Ela foi substituída pela **ABNT NBR 17037**, que é norma paga e **não foi
-  consultada** neste projeto.
+As fontes:
 
-A faixa de 40 a 60 % usada aqui é **convergência de fontes, não norma vigente**.
-Se o trabalho precisar fundamentar alguma coisa em umidade, é neste ponto que
-falta checagem — e o honesto é declarar isso em vez de citar uma norma revogada.
+- **RE 09/2003 da ANVISA** indicava 40 a 65 % no verão. **Revogada em julho de
+  2024** pela RDC 886/2024. Citar apenas como histórico.
+- **OSHA** recomenda 20 a 60 %, sem caráter obrigatório, apoiada na
+  **ASHRAE 55**.
+- A **NR-17** manda controlar a umidade, mas perdeu o número na revisão de 2021.
 
-O aparelho também declara: na tela, a umidade aparece como "convergência de
-fontes, sem norma brasileira vigente".
+A faixa adotada, **40 a 60 %**, é a que aparece de forma consistente nas fontes
+como a que minimiza **ao mesmo tempo** proliferação biológica (que cresce com
+umidade alta) e irritação de vias aéreas (que cresce com umidade baixa). É a
+interseção da recomendação da OSHA com o piso da ANVISA revogada.
+
+A margem de atenção, **30 a 70 %**, tem razão própria: abaixo de 30 % a
+irritação de vias aéreas é documentada, e acima de 70 % o risco de mofo cresce
+rápido.
+
+**O que falta checar:** a substituta da RE 09/2003 é a **ABNT NBR 17037**, norma
+paga, não consultada. Se o trabalho precisar citar norma vigente para umidade, é
+ela. Enquanto isso, a honestidade é dizer "convergência de fontes" — que é o que
+o aparelho escreve na própria tela — em vez de citar norma revogada como se
+estivesse em vigor.
 
 ### Por que a faixa de umidade não é mais estreita
 
@@ -312,19 +335,24 @@ monitor.
 
 ---
 
-## 10. O que falta — honestidade sobre o estado
+## 10. O que falta
 
-Vale a apresentação declarar o que não está pronto:
+**As três análises de histórico**, que respondem a segunda pergunta do produto,
+"há quanto tempo está assim?":
 
-- **A calibração do ruído nunca foi feita.** Depende de um medidor de referência
-  emprestado por alguns minutos. Até lá, o número absoluto é indicativo.
-- **Três análises de histórico ainda não construídas:** tempo de exposição por
-  faixa, resumo diário de mínimo, máximo e média, e registro de excursões (quando
-  saiu da faixa e por quanto tempo). São elas que respondem a segunda pergunta do
-  produto, "há quanto tempo está assim?".
-- **A faixa de umidade carece de checagem** contra a ABNT NBR 17037, que é paga.
+- tempo de exposição por faixa;
+- resumo diário de mínimo, máximo e média;
+- registro de excursões — quando saiu da faixa e por quanto tempo.
 
----
+Elas dependem de **deixar o sistema ligado acumulando dados**, que é o estado
+atual do projeto. Hoje o banco tem 3.306 leituras de ar e 371 janelas de ruído.
+
+Duas coisas que podem ser apertadas, mas não bloqueiam nada:
+
+- **recalibrar o ruído** contra um decibelímetro Tipo 2, para reduzir a
+  incerteza do valor absoluto (ver seção 3);
+- **consultar a ABNT NBR 17037** se o trabalho precisar de norma vigente para
+  umidade (ver seção 6).
 
 ## 11. Referências para citar
 
@@ -346,6 +374,12 @@ Vale a apresentação declarar o que não está pronto:
 **Normas internacionais**
 
 - **IEC 61672-1** — ponderação A e classes de medidor de nível sonoro.
+
+**Recomendações internacionais (não obrigatórias)**
+
+- **OSHA** — faixa de umidade relativa de 20 a 60 % para ambiente de trabalho.
+- **ASHRAE 55** — *Thermal Environmental Conditions for Human Occupancy*, base
+  da recomendação da OSHA.
 
 **Saúde pública**
 

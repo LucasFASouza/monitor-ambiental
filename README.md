@@ -470,18 +470,16 @@ espere casas decimais.
 
 ## Adiante
 
-**Calibrar o nível de ruído** contra um medidor de referência, pela página
-`/calibracao`. Até lá o valor absoluto em dB(A) é indicativo e o dashboard avisa
-isso em todas as telas.
-
-**Fechar a faixa de umidade** com fonte normativa vigente, o que hoje passa por
-consultar a ABNT NBR 17037, que é paga. Ver a ressalva na seção de
-classificação.
-
 **Três análises de histórico** que respondem a segunda pergunta do produto, "há
 quanto tempo está assim?": tempo de exposição por faixa, resumo diário de
 mínimo, máximo e média, e registro de excursões — quando saiu da faixa e por
-quanto tempo.
+quanto tempo. Dependem de deixar o sistema ligado acumulando dados, que é o
+estado atual do projeto.
+
+Duas coisas que podem ser apertadas, mas não bloqueiam nada: **recalibrar o
+ruído** contra um decibelímetro Tipo 2, já que a calibração em vigor foi feita
+contra um medidor de navegador, e **consultar a ABNT NBR 17037** se for preciso
+citar norma vigente para umidade.
 
 **Acesso só pela rede local**, por decisão de segurança e escopo. A página não
 tem autenticação e as rotas de calibração alteram como todo o histórico de ruído

@@ -51,8 +51,9 @@ Limitações que o produto precisa comunicar, não esconder:
 
 - o DHT11 tem resolução de 1 °C e precisão de ±5% na umidade, e falha em parte
   das leituras por característica do próprio sensor;
-- o nível de ruído ainda não foi calibrado contra medidor de referência, então
-  o valor absoluto é indicativo e só a variação é confiável;
+- o nível de ruído foi calibrado contra um medidor de navegador, não contra
+  instrumento com certificado: a incerteza do valor absoluto é a da referência
+  usada, e está registrada na ficha de calibração;
 - não é instrumento de higiene ocupacional: avaliação de insalubridade exige
   medidor com certificado de calibração, e este aparelho não substitui isso;
 - não mede calor radiante, então não serve para IBUTG.
