@@ -86,12 +86,17 @@ body {
    de baixo do campo: todas fecham. */
 .capa-campo.unico { padding-bottom: var(--e5); }
 
+/* min-height fixa porque o que mora à direita muda de página para página: o
+   frescor do painel é texto de 22px e o "voltar" das subpáginas é um alvo de
+   44px. Sem isto a linha esticava numa página e não na outra, e o campo teal
+   mudava de altura ao navegar. */
 .capa-topo {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--e2) var(--e5);
+  min-height: 44px;
 }
 
 .capa h1 {
@@ -260,12 +265,68 @@ main {
   letter-spacing: 0;
 }
 
-.explicacao {
-  max-width: var(--medida);
+/* --- divulgação progressiva: o porquê, por cima ---------------------------- */
+/* Texto que não muda com o estado vira mobília depois da primeira leitura. O
+   disparador mora no canto superior direito do bloco, fora do fluxo, e o
+   painel flutua por cima em vez de empurrar a coluna — abrir e fechar não pode
+   mexer na posição do gráfico que a pessoa está lendo.
+
+   <details> e não tooltip de hover: hover não existe no toque. Sem o script
+   da página o clique já abre e fecha; o script só acrescenta Esc e clique
+   fora. */
+
+.curva { position: relative; }
+
+/* No canto superior direito da curva, que é o canto direito da página: o
+   disparador fica num lugar só, previsível, e longe da leitura que ele
+   explica. */
+.saiba { position: absolute; top: 0; right: 0; z-index: 3; }
+
+/* O disparador da grandeza seguinte vem depois no DOM e, com o mesmo z-index,
+   era pintado por cima do painel aberto. */
+.saiba[open] { z-index: 4; }
+
+.saiba summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-top: calc(var(--e3) * -1);
+  color: var(--fraco);
+  cursor: pointer;
+  list-style: none;
+}
+
+.saiba summary::-webkit-details-marker { display: none; }
+.saiba summary:hover { color: var(--capa); }
+.saiba[open] summary { color: var(--capa); }
+.saiba summary svg { width: var(--e5); height: var(--e5); }
+
+/* Abre para dentro do gráfico, nunca sobre a leitura: cobrir o número que a
+   pessoa acabou de perguntar sobre é o pior lugar possível. Separação por
+   régua e fundo sólido, não por sombra — o mundo escolhido não tem elevação, e
+   o único plano da página é o campo do cabeçalho. */
+.saiba-corpo {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  width: 320px;
+  padding: var(--e4);
+  border: 1px solid var(--regua);
+  background: var(--papel);
+}
+
+.saiba-corpo p {
   color: var(--meio);
   font-size: var(--t-apoio);
   line-height: 1.6;
+}
+
+.saiba-corpo p + p {
   margin-top: var(--e3);
+  padding-top: var(--e3);
+  border-top: 1px solid var(--regua);
 }
 
 /* Entrada de calibração, permanente dentro do setor de ruído. Não é botão: é
@@ -289,8 +350,13 @@ main {
 .afericao svg { width: var(--e4); height: var(--e4); flex: none; }
 
 /* O gráfico senta direto na página: um painel com borda em volta dele seria
-   um cartão, e o mundo escolhido não tem cartão. */
-.curva { position: relative; height: 188px; }
+   um cartão, e o mundo escolhido não tem cartão.
+
+   A faixa de 44px no topo é do disparador de informação. Sem ela o ícone caía
+   em cima do rótulo de limite: a calha direita do gráfico é reservada a esses
+   rótulos, e quando o limite coincide com o topo da janela — o teto de 65
+   dB(A) do ruído — ele é desenhado exatamente ali. O canvas mantém os 188px. */
+.curva { height: 232px; padding-top: 44px; }
 
 /* --- pé: prosa à esquerda, ação à direita --------------------------------- */
 /* A exportação tinha uma seção inteira de 945x75px com border-top do mesmo
@@ -299,10 +365,11 @@ main {
    e um botão chamado só "exportar" esconde isso. O bloco é que sai. */
 
 footer {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: var(--e5) var(--e7);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e4) var(--e7);
   max-width: var(--coluna);
   margin: 0 auto;
   padding: var(--e5) var(--e6) var(--e7);
@@ -312,17 +379,19 @@ footer {
   line-height: 1.6;
 }
 
-.notas { max-width: var(--medida); }
-.notas p + p { margin-top: var(--e3); }
-.notas b { color: var(--tinta); font-weight: 600; }
+/* O rodapé era 861 caracteres de prosa cinza sem cabeçalho. O que importava
+   dali foi para a /sistema e para a divulgação de cada grandeza; o que sobra
+   é o caminho até lá, e ele não precisa de mais que um link. */
+.ir-para-sistema {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--meio);
+  font-size: var(--t-apoio);
+  text-underline-offset: 3px;
+}
 
-.ressalva { color: var(--ruim); }
-
-/* O unico link de texto da pagina estava no azul padrao do navegador: o
-   #0000ee nao pertence a paleta nenhuma, e era o unico texto interativo sem
-   teal da pagina. */
-.notas a { color: var(--capa); text-underline-offset: 2px; }
-.notas a:hover { color: var(--capa-fundo); }
+.ir-para-sistema:hover { color: var(--capa); }
 
 .botao {
   display: inline-flex;
@@ -380,7 +449,7 @@ footer {
 @media (max-width: 760px) {
   .capa-campo { padding: var(--e4) var(--e4) 0; }
   main { padding: 0 var(--e4); }
-  footer { grid-template-columns: minmax(0, 1fr); padding: var(--e5) var(--e4) var(--e6); }
+  footer { padding: var(--e5) var(--e4) var(--e6); }
 
   .barra-filtro-opcoes { margin-left: 0; }
 
@@ -388,7 +457,9 @@ footer {
      os dois até nenhum ser legível. */
   .grandeza { grid-template-columns: 1fr; gap: var(--e4); }
 
-  .curva { height: 180px; }
+  .curva { height: 224px; }
+
+  .saiba-corpo { width: calc(100vw - var(--e4) * 2); }
 }
 
 /* --- subpáginas: a mesma gramática do painel ------------------------------ */

@@ -29,6 +29,10 @@
           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.2 2"/>
   </symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5"/><path d="M12 7.9h.01"/>
+  </symbol>
   <symbol id="i-aferir" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 16.4a8.4 8.4 0 0 1 16 0"/>
@@ -93,7 +97,6 @@
           <p class="estado e-{{ b.nivel }}">{{ b.frase|capitalize }}</p>
           <p class="valor">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>
         {% endif %}
-        <p class="explicacao">{{ b.explicacao }}</p>
         {%- if b.chave == 'ruido' %}
           {# Permanente, e lendo o estado. Antes a unica rota para a calibracao
              era uma palavra dentro de um paragrafo condicional no rodape: no
@@ -112,6 +115,21 @@
         {%- endif %}
       </div>
       <div class="curva">
+        {# No canto superior direito do gráfico, que é o canto direito da
+           página. O painel flutua por cima em vez de empurrar a coluna: abrir
+           e fechar não pode mexer na posição do que a pessoa está lendo.
+           <details> e não tooltip de hover, porque hover não existe no toque;
+           sem JavaScript o clique já abre e fecha, e o script só acrescenta
+           Esc e clique fora. #}
+        <details class="saiba">
+          <summary aria-label="O que significa {{ b.nome|lower }} e de onde vem o limite">
+            <svg aria-hidden="true"><use href="#i-info"></use></svg>
+          </summary>
+          <div class="saiba-corpo">
+            <p>{{ b.explicacao }}</p>
+            <p>{{ b.norma }}</p>
+          </div>
+        </details>
         <canvas data-grafico="{{ b.chave }}"
                 aria-label="Histórico de {{ b.nome|lower }} no período selecionado" role="img"></canvas>
       </div>
@@ -120,19 +138,7 @@
 </main>
 
 <footer>
-  <div class="notas">
-    <p>A linha é a média de cada intervalo. A sombra atrás dela mostra o mínimo e o máximo do mesmo
-      intervalo, então um pico curto não some na média. A régua colorida à esquerda marca as faixas
-      na escala, e a vermelha só aparece quando a medição chega perto dela.</p>
-
-    <p>Temperatura: faixa de 18 a 25 °C do item 17.8.4.2 da NR-17.
-      Ruído: 45 dB(A) da NBR 10152:2017 e teto de 65 dB(A) do item 17.8.4.1.2 da NR-17.
-      Umidade: convergência de fontes, sem norma brasileira vigente.</p>
-
-    <p><a href="{{ url_for('pagina_sistema') }}">Estado da coleta, calibração e limites do
-      aparelho</a>{% if visao.saude.ar.buracos or visao.saude.ruido.buracos %} — a coleta
-      foi interrompida neste período{% endif %}.</p>
-  </div>
+  <a class="ir-para-sistema" href="{{ url_for('pagina_sistema') }}">Informações do sistema</a>
 
   <a class="botao" href="{{ url_for('exportar_csv', horas=visao.horas) }}" download>
     <svg aria-hidden="true"><use href="#i-baixar"></use></svg>

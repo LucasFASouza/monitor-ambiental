@@ -158,6 +158,23 @@
 
   for (const [chave, d] of Object.entries(DADOS)) desenhar(chave, d);
 
+  /* As divulgações fecham com Esc e clicando fora: é o que separa um painel
+     flutuante de uma sanfona. Sem este bloco o <details> continua abrindo e
+     fechando no próprio clique, então nada depende daqui. */
+  const divulgacoes = () => document.querySelectorAll("details.saiba[open]");
+
+  document.addEventListener("click", (e) => {
+    for (const d of divulgacoes()) if (!d.contains(e.target)) d.open = false;
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    for (const d of divulgacoes()) {
+      d.open = false;
+      d.querySelector("summary")?.focus();
+    }
+  });
+
   // --- o que depende do tempo passar ---------------------------------------
 
   const intervalo = Number(document.body.dataset.intervalo) || 60;
