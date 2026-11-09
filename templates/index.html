@@ -25,35 +25,48 @@
     <path d="M15 9.3a3.8 3.8 0 0 1 0 5.4"/>
     <path d="M17.8 6.6a7.6 7.6 0 0 1 0 10.8"/>
   </symbol>
+  <symbol id="i-filtro" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.8 5.4h16.4l-6.4 7.4v6.1l-3.6 1.7v-7.8Z"/>
+  </symbol>
+  <symbol id="i-baixar" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.6v11.2"/><path d="m7.6 10.6 4.4 4.4 4.4-4.4"/>
+    <path d="M4.4 19.2h15.2"/>
+  </symbol>
 </svg>
 
 <header class="capa">
-  <div class="capa-fita">
-    <h1>Monitor ambiental</h1>
-    <form class="periodo" method="get">
-      <label for="horas">Período</label>
-      <select id="horas" name="horas">
-        {% for horas, rotulo in visao.periodos %}
-          <option value="{{ horas }}"{% if horas == visao.horas %} selected{% endif %}>{{ rotulo }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit">Ver</button>
-    </form>
+  <div class="capa-campo">
+    <div class="capa-topo">
+      <h1>Monitor ambiental</h1>
+      {% if visao.idade_segundos is not none %}
+        <p class="frescor {{ 'parado' if not visao.atualizado else '' }}">
+          <span class="pulso" aria-hidden="true"></span>
+          {%- if visao.atualizado %}
+            leitura de <span id="idade">{{ visao.idade }}</span> atrás
+          {%- else %}
+            A coleta parou. Última leitura há <span id="idade">{{ visao.idade }}</span>.
+          {%- endif %}
+        </p>
+      {% endif %}
+    </div>
+
+    <nav class="periodo" aria-label="Período exibido">
+      <span class="periodo-rotulo">
+        <svg aria-hidden="true"><use href="#i-filtro"></use></svg>
+        Período
+      </span>
+      {% for horas, rotulo in visao.periodos %}
+        <a class="periodo-item {{ 'ativo' if horas == visao.horas else '' }}"
+           href="{{ url_for('pagina', horas=horas) }}"
+           {% if horas == visao.horas %}aria-current="true"{% endif %}>{{ rotulo }}</a>
+      {% endfor %}
+    </nav>
   </div>
 </header>
 
 <main class="conteudo">
-  {% if visao.idade_segundos is not none %}
-    <p class="frescor {{ 'parado' if not visao.atualizado else '' }}">
-      <span class="pulso" aria-hidden="true"></span>
-      {%- if visao.atualizado %}
-        leitura de <span id="idade">{{ visao.idade }}</span> atrás
-      {%- else %}
-        A coleta parou. Última leitura há <span id="idade">{{ visao.idade }}</span>.
-      {%- endif %}
-    </p>
-  {% endif %}
-
   {% if visao.saude.alerta_cobertura %}
     <p class="recado erro">O período selecionado é de {{ visao.saude.pedido }}, mas só há
       dados de {{ visao.saude.coberto }}. Os gráficos abaixo cobrem menos tempo do que o
@@ -61,23 +74,16 @@
   {% endif %}
 
   {% for b in visao.blocos %}
-    <section class="grandeza">
+    <section class="grandeza" aria-label="{{ b.nome }}">
       <div class="leitura">
-        <div class="cabeca">
-          <span class="ladrilho t-{{ b.nivel or 'sem' }}" aria-hidden="true">
-            <svg><use href="#i-{{ b.chave }}"></use></svg>
-          </span>
-          <div>
-            <h2>{{ b.nome }}</h2>
-            {% if b.valor is none %}
-              <p class="estado">Sem leitura</p>
-            {% else %}
-              <p class="estado e-{{ b.nivel }}">{{ b.frase|capitalize }}</p>
-            {% endif %}
-          </div>
-        </div>
-
-        {% if b.valor is not none %}
+        <svg class="marca m-{{ b.nivel or 'sem' }}" aria-hidden="true">
+          <use href="#i-{{ b.chave }}"></use>
+        </svg>
+        <h2>{{ b.nome }}</h2>
+        {% if b.valor is none %}
+          <p class="estado">Sem leitura</p>
+        {% else %}
+          <p class="estado e-{{ b.nivel }}">{{ b.frase|capitalize }}</p>
           <p class="valor">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>
         {% endif %}
         <p class="explicacao">{{ b.explicacao }}</p>
@@ -88,53 +94,48 @@
       </div>
     </section>
   {% endfor %}
-
-  <div class="acoes">
-    <a class="botao" href="{{ url_for('exportar_csv', horas=visao.horas) }}" download>
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3.6v11.2"/><path d="m7.6 10.6 4.4 4.4 4.4-4.4"/>
-        <path d="M4.4 19.2h15.2"/>
-      </svg>
-      Exportar
-      {%- for horas, rotulo in visao.periodos %}{% if horas == visao.horas %} {{ rotulo|lower }}{% endif %}{% endfor %}
-      em CSV
-    </a>
-    <span class="acoes-nota">Temperatura, umidade e ruído no mesmo arquivo, uma linha por minuto.</span>
-  </div>
 </main>
 
 <footer>
-  {% if not visao.ruido_calibrado %}
-    <p class="ressalva">O nível de ruído ainda não foi comparado com um medidor de referência.
-      Por enquanto, confie na variação e não no número. Este monitor não substitui instrumento
-      com certificado de calibração. <a href="{{ url_for('pagina_calibracao') }}">Calibrar</a>.</p>
-  {% endif %}
+  <div class="notas">
+    {% if not visao.ruido_calibrado %}
+      <p class="ressalva">O nível de ruído ainda não foi comparado com um medidor de referência.
+        Por enquanto, confie na variação e não no número. Este monitor não substitui instrumento
+        com certificado de calibração. <a href="{{ url_for('pagina_calibracao') }}">Calibrar</a>.</p>
+    {% endif %}
 
+    <p class="saude">
+      No período,
+      <b>{{ visao.saude.ar.leituras }}</b> leituras de ar
+      {%- if visao.saude.ar.completude_pct is not none %} ({{ visao.saude.ar.completude_pct }} % do esperado){% endif %}
+      e <b>{{ visao.saude.ruido.leituras }}</b> janelas de ruído
+      {%- if visao.saude.ruido.completude_pct is not none %} ({{ visao.saude.ruido.completude_pct }} %){% endif %}.
+      {%- set bar = visao.saude.ar.buracos %}
+      {%- set bruido = visao.saude.ruido.buracos %}
+      {%- if bar or bruido %}
+        A coleta
+        {%- if bar %} de ar parou {{ bar }} {{ 'vez' if bar == 1 else 'vezes' }}{% endif %}
+        {%- if bar and bruido %} e a de ruído {{ bruido }} {{ 'vez' if bruido == 1 else 'vezes' }}
+        {%- elif bruido %} de ruído parou {{ bruido }} {{ 'vez' if bruido == 1 else 'vezes' }}{% endif %}.
+        Cada parada aparece no gráfico como um trecho reto, não como queda.
+      {%- endif %}
+    </p>
 
-  <p class="saude">
-    No período,
-    <b>{{ visao.saude.ar.leituras }}</b> leituras de ar
-    {%- if visao.saude.ar.completude_pct is not none %} ({{ visao.saude.ar.completude_pct }} % do esperado){% endif %}
-    e <b>{{ visao.saude.ruido.leituras }}</b> janelas de ruído
-    {%- if visao.saude.ruido.completude_pct is not none %} ({{ visao.saude.ruido.completude_pct }} %){% endif %}.
-    {%- set bar = visao.saude.ar.buracos %}
-    {%- set bruido = visao.saude.ruido.buracos %}
-    {%- if bar or bruido %}
-      A coleta
-      {%- if bar %} de ar parou {{ bar }} {{ 'vez' if bar == 1 else 'vezes' }}{% endif %}
-      {%- if bar and bruido %} e a de ruído {{ bruido }} {{ 'vez' if bruido == 1 else 'vezes' }}
-      {%- elif bruido %} de ruído parou {{ bruido }} {{ 'vez' if bruido == 1 else 'vezes' }}{% endif %}.
-      Cada parada aparece no gráfico como um trecho reto, não como queda.
-    {%- endif %}
-  </p>
+    <p>A linha é a média de cada intervalo. A sombra atrás dela mostra o mínimo e o máximo do mesmo
+      intervalo, então um pico curto não some na média. A régua colorida à esquerda marca as faixas
+      na escala, e a vermelha só aparece quando a medição chega perto dela.</p>
 
-  <p>A linha é a média de cada intervalo. A sombra atrás dela mostra o mínimo e o máximo do mesmo
-    intervalo, então um pico curto não some na média. A régua colorida à esquerda marca as faixas
-    na escala, e a vermelha só aparece quando a medição chega perto dela.</p>
-  <p class="fontes">Temperatura: faixa de 18 a 25 °C do item 17.8.4.2 da NR-17.
-    Ruído: 45 dB(A) da NBR 10152:2017 e teto de 65 dB(A) do item 17.8.4.1.2 da NR-17.
-    Umidade: convergência de fontes, sem norma brasileira vigente.</p>
+    <p>Temperatura: faixa de 18 a 25 °C do item 17.8.4.2 da NR-17.
+      Ruído: 45 dB(A) da NBR 10152:2017 e teto de 65 dB(A) do item 17.8.4.1.2 da NR-17.
+      Umidade: convergência de fontes, sem norma brasileira vigente.</p>
+  </div>
+
+  <a class="botao" href="{{ url_for('exportar_csv', horas=visao.horas) }}" download>
+    <svg aria-hidden="true"><use href="#i-baixar"></use></svg>
+    Exportar
+    {%- for horas, rotulo in visao.periodos %}{% if horas == visao.horas %} {{ rotulo|lower }}{% endif %}{% endfor %}
+    em CSV
+  </a>
 </footer>
 
 <script id="dados" type="application/json">{{ visao.dados_json|safe }}</script>

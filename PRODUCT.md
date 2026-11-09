@@ -92,6 +92,13 @@ A faixa de umidade é convergência de fontes, sem norma vigente verificada.
 
 Público não especialista lendo em contexto de trabalho: o significado não pode
 depender só de cor, e o texto precisa ser legível sem ampliar a página.
-Referência WCAG 2.1 AA, verificada: a paleta atual passa em todos os pares de
-texto medidos, com margem mínima de 4,65:1. O significado nunca depende só de
-cor — a condição de cada grandeza é dita por extenso em frase.
+Referência WCAG 2.1 AA, medida no render em 2026-11-09: os oito pares de texto
+da página passam, com mínimo de 4,75:1 (rótulo e abas inativas do filtro sobre
+o campo teal). O anel de foco é 5,73:1 sobre o campo. O significado nunca
+depende só de cor — a condição de cada grandeza é dita por extenso em frase.
+
+Essa conformidade é verificada, não presumida: uma versão anterior deste
+arquivo afirmava mínimo de 4,65:1 enquanto três pares falhavam de fato
+(4,41:1 no título da capa, 3,78:1 no rótulo do filtro, 2,84:1 na linha das
+normas) e o anel de foco era 1,00:1, invisível. Toda mudança de paleta precisa
+ser remedida no render, não deduzida dos tokens.

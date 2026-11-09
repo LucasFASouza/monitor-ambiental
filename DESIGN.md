@@ -6,6 +6,8 @@ colors:
   capa-fundo: "#0a5753"
   capa-texto: "#eaf4f3"
   capa-fraco: "#c8e3e0"
+  capa-vivo: "#8fd9a8"
+  capa-parado: "#ffd166"
   papel: "#ffffff"
   ambiente: "#f4f6f6"
   tinta: "#17202a"
@@ -47,27 +49,34 @@ typography:
 rounded:
   nenhum: "0px"
 spacing:
-  xs: "7px"
-  sm: "10px"
-  md: "18px"
-  lg: "30px"
-  xl: "36px"
+  e1: "4px"
+  e2: "8px"
+  e3: "12px"
+  e4: "16px"
+  e5: "24px"
+  e6: "32px"
+  e7: "48px"
+  e8: "64px"
 components:
   capa:
     backgroundColor: "{colors.capa}"
     textColor: "{colors.capa-texto}"
-    padding: "22px 32px 0"
+    padding: "24px 32px 0"
   periodo-item:
     textColor: "{colors.capa-fraco}"
-    padding: "10px 15px"
+    padding: "12px 16px"
     minHeight: "44px"
   periodo-item-ativo:
     textColor: "{colors.capa-texto}"
     fontWeight: 600
     borderBottom: "3px solid {colors.capa-texto}"
+  marca:
+    size: "48px"
+    strokeWidth: "1.9px"
+    stroke: "estado"
   grandeza:
     borderTop: "1px solid {colors.regua}"
-    padding: "30px 0"
+    padding: "32px 0"
   grafico-regua-faixa:
     width: "9px"
   grafico-limite:
@@ -106,8 +115,14 @@ pressionados dentro do campo.
 
 `ambiente` #f4f6f6 é o fundo da página, `papel` #ffffff a superfície elevada
 (hoje usada só onde um gráfico precisa de contraste próprio). `tinta` #17202a é
-a cor do texto; `meio` #5f6a74 o texto de apoio; `fraco` #8b949d o mais
-discreto; `regua` #dde2e5 as divisórias de um pixel.
+a cor do texto e `meio` #5f6a74 o texto de apoio — **são os dois únicos cinzas
+de texto**. `fraco` #767f88 é só para marca e glifo, nunca para texto: na forma
+anterior (#8b949d) ele media 2,84:1 sobre `ambiente` e falhava AA em todo lugar
+onde foi usado como texto. `regua` #dde2e5 são as divisórias de um pixel.
+
+Dentro do campo teal há dois tons de marca, não de texto: `capa-vivo` #8fd9a8
+no ponto de coleta viva e `capa-parado` #ffd166 no de coleta parada. As cores
+de estado da página não servem ali — `bom` sobre `capa` é 1,01:1.
 
 Nenhum deles tem matiz quente. Creme é proibido aqui por decisão de direção.
 
@@ -139,8 +154,14 @@ dígito num instrumento de medição.
 
 ### Hierarchy
 
-Quatro degraus, e só quatro: a frase de situação e o título em 1,25rem; o valor
-medido em 2,125rem; o nome da grandeza em 1,125rem; o apoio em 0,875rem.
+Quatro degraus acima do corpo, e só quatro: a frase de situação e o título em
+1,25rem; o valor medido em 2,125rem; o nome da grandeza em 1,125rem; o apoio em
+0,875rem. Com o corpo em 1rem, a página inteira cabe em cinco tamanhos.
+
+**Dois pesos, e só dois:** 600 no título da capa, no nome da grandeza, no valor
+medido e na aba ativa do filtro; 400 em todo o resto, inclusive na frase de
+situação. Ela é maior que o nome da grandeza e mais leve — a resposta é o que
+se lê primeiro, e peso em tudo não é hierarquia, é só barulho.
 
 Nenhum rótulo em caixa alta acima de um número. O nome da grandeza é um
 título de verdade e carrega o próprio peso.
@@ -154,6 +175,22 @@ esquerda, o gráfico ocupando o resto. Separadas por régua de um pixel, não po
 caixa.
 
 Mais espaço acima de um título do que abaixo dele.
+
+Toda medida de espaço sai da escada `e1..e8`, em múltiplos de 4px. Se um valor
+não está nela, está errado: foi o dimensionamento no olho, 18 de 23 medidas
+fora de escala, que deu à primeira versão a cara de amadora.
+
+### Bloco de leitura
+
+Uma margem esquerda só. Marca, nome, frase, valor e explicação começam todos no
+mesmo x. A versão anterior punha a marca num ladrilho de 42px dentro do fluxo
+de texto, e nome e frase saíam 55px à direita do valor e da explicação — duas
+margens esquerdas no mesmo bloco, nas três grandezas e nos três breakpoints.
+
+A marca é glifo solto na cor do estado, sem caixa. Um quadrado saturado com
+glifo vazado é o selo que esta direção proíbe: codificava estado, já dito na
+frase, e categoria, já dita no título, sem acrescentar nada, e era o objeto
+mais pesado da composição.
 
 Abaixo de 760px a grandeza vira coluna única e o gráfico desce para baixo do
 texto. Lado a lado em 375px espremeria os dois até nenhum ser legível.
@@ -176,7 +213,14 @@ de largura para a régua de faixas do eixo.
 ### Navigation
 
 O cabeçalho não tem navegação: a página é uma só. O seletor de período são
-links com 44px de altura mínima, com o ativo marcado por peso e régua inferior.
+links com 44px de altura mínima, com o ativo marcado por peso e régua inferior,
+e essa régua encosta na borda de baixo do campo teal. Um ícone de funil e a
+palavra "Período" dizem que a fila é um filtro.
+
+Links, não `<select>`: o campo de formulário submetia na primeira seta do
+teclado, então quem navega por teclado andava uma opção por carregamento de
+página e perdia o foco em cada uma. Páginas sem o filtro fecham o campo
+embaixo (`capa-campo.unico`).
 
 ### Gráfico
 

@@ -9,13 +9,6 @@
 (() => {
   "use strict";
 
-  // Marca a pagina como com-JavaScript: o botao "Ver" do filtro so existe
-  // para quem nao tem, e some aqui.
-  document.documentElement.classList.add("js");
-
-  const selecao = document.getElementById("horas");
-  if (selecao) selecao.addEventListener("change", () => selecao.form.submit());
-
   const DADOS = JSON.parse(document.getElementById("dados").textContent);
   const estilo = getComputedStyle(document.documentElement);
   const cor = (n) => estilo.getPropertyValue(n).trim();

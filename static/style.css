@@ -1,24 +1,51 @@
-/* Mundo: a Caderneta de Saúde da Criança — cor institucional saturada e a
-   faixa de referência impressa no gráfico. Não o papel creme, que é o lugar
-   onde todo projeto deste tipo aterrissa. */
+/* Mundo: a Caderneta de Saúde da Criança — cor institucional saturada
+   carregando região inteira, e a faixa de referência impressa no gráfico. Não
+   o papel creme, que é o lugar onde todo projeto deste tipo aterrissa.
+
+   Tudo aqui é dimensionado por token. Se uma medida não sai de --e1..--e8 ou
+   de --t-*, ela está errada: foi o dimensionamento no olho, um elemento de
+   cada vez, que deu à página a cara de amadora que a crítica mediu. */
 
 :root {
+  /* --- cor --------------------------------------------------------------- */
   --capa: #0d6a66;
   --capa-fundo: #0a5753;
-  --capa-texto: #eaf4f3;
-  --capa-fraco: #c8e3e0;
+  --capa-texto: #eaf4f3;   /* 5,73:1 sobre --capa */
+  --capa-fraco: #c8e3e0;   /* 4,75:1 sobre --capa */
+  --capa-vivo: #8fd9a8;    /* ponto de coleta viva, 3,87:1 — marca, não texto */
+  --capa-parado: #ffd166;  /* ponto de coleta parada, 4,45:1 */
 
   --papel: #ffffff;
   --ambiente: #f4f6f6;
-  --tinta: #17202a;
-  --meio: #5f6a74;
-  --fraco: #8b949d;
+  --tinta: #17202a;        /* 15,17:1 */
+  --meio: #5f6a74;         /* 5,09:1 — o único cinza de texto de apoio */
+  --fraco: #767f88;        /* 3,75:1 — marcas e glifos, nunca texto */
   --regua: #dde2e5;
 
   --bom: #2f6b45;
   --atencao: #8a5e08;
   --ruim: #8f3023;
   --limite: #8a6a20;
+
+  /* --- tipografia: quatro degraus acima do corpo, e só quatro -------------- */
+  --t-apoio: 0.875rem;     /* 14px — explicação, rodapé, eixo */
+  --t-corpo: 1rem;         /* 16px — base */
+  --t-grandeza: 1.125rem;  /* 18px — nome da grandeza */
+  --t-titulo: 1.25rem;     /* 20px — título da capa e frase de situação */
+  --t-valor: 2.125rem;     /* 34px — a medição */
+
+  /* --- espaço: uma escada só, toda em múltiplos de 4 ----------------------- */
+  --e1: 4px;
+  --e2: 8px;
+  --e3: 12px;
+  --e4: 16px;
+  --e5: 24px;
+  --e6: 32px;
+  --e7: 48px;
+  --e8: 64px;
+
+  --coluna: 1120px;
+  --medida: 68ch;
 
   color-scheme: light;
   accent-color: var(--capa);
@@ -31,311 +58,359 @@
 :focus-visible {
   outline: 2px solid var(--capa);
   outline-offset: 3px;
-  border-radius: 2px;
 }
 
 body {
   background: var(--ambiente);
   color: var(--tinta);
-  font: 400 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 400 var(--t-corpo)/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-/* --- capa: a barra fina da variante escolhida ---------------------------- */
-/* Uma faixa de identidade e nada mais. O estado geral saiu daqui: as tres
-   grandezas ja dizem a propria condicao por extenso, e repetir no topo era
-   duplicata. */
-.capa { background: var(--capa); }
+/* --- capa: campo saturado, não tarja -------------------------------------- */
+/* A direção pede o teal carregando uma região inteira. Uma faixa de 46px com
+   o título em caixa alta de 13px era uma sobrancelha: o campo some e sobra um
+   painel cinza anônimo. O título é título, e o filtro de período mora na
+   borda de baixo do campo, onde a régua do ativo encosta. */
 
-.capa-fita {
+.capa { background: var(--capa); color: var(--capa-texto); }
+
+.capa-campo {
+  max-width: var(--coluna);
+  margin: 0 auto;
+  padding: var(--e5) var(--e6) 0;
+}
+
+/* Páginas sem o filtro de período fecham o campo embaixo: a régua do item
+   ativo é que encostava nessa borda. */
+.capa-campo.unico { padding-bottom: var(--e5); }
+
+.capa-topo {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 20px;
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 8px 32px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e2) var(--e5);
 }
 
 .capa h1 {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--capa-texto) 82%, transparent);
+  font-size: var(--t-titulo);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.5;
 }
 
-/* --- periodo: no cabecalho, encostado a direita ------------------------- */
+.capa h1 a { color: inherit; text-decoration: none; }
 
-.periodo {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-left: auto;
-  color: color-mix(in srgb, var(--capa-texto) 72%, transparent);
-  font-size: 0.8125rem;
-}
+.capa :focus-visible { outline-color: var(--capa-texto); }
 
-.periodo select {
-  font: inherit;
-  font-size: 0.875rem;
-  color: var(--capa-texto);
-  padding: 4px 7px;
-  min-height: 30px;
-  border: 1px solid color-mix(in srgb, var(--capa-texto) 32%, transparent);
-  background: var(--capa-fundo);
-}
+/* --- frescor: dentro do campo, à direita do título ------------------------ */
 
-.periodo select:hover { border-color: var(--capa-texto); }
-
-.periodo button {
-  font: inherit;
-  font-size: 0.8125rem;
-  padding: 4px 9px;
-  min-height: 30px;
-  border: 1px solid color-mix(in srgb, var(--capa-texto) 32%, transparent);
-  background: transparent;
-  color: var(--capa-texto);
-  cursor: pointer;
-}
-
-.js .periodo button { display: none; }
-
-/* --- frescor da leitura --------------------------------------------------- */
-
+/* Sem gap de flex: os nós de texto da frase viram itens anônimos e o gap
+   abre buraco antes do ponto final ("há  67 min  ."). O ponto ganha margem
+   própria e a frase segue sendo uma frase. */
 .frescor {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 22px 0 2px;
-  color: var(--meio);
-  font-size: 0.875rem;
-  font-variant-numeric: tabular-nums;
+  color: var(--capa-fraco);
+  font-size: var(--t-apoio);
 }
 
 .pulso {
-  width: 7px;
-  height: 7px;
+  display: inline-block;
+  width: var(--e2);
+  height: var(--e2);
+  margin-right: var(--e2);
   border-radius: 50%;
-  background: var(--bom);
-  flex: none;
+  background: var(--capa-vivo);
+  vertical-align: baseline;
 }
 
-.frescor.parado { color: var(--ruim); }
-.frescor.parado .pulso { background: var(--ruim); }
+.frescor.parado { color: var(--capa-texto); }
+.frescor.parado .pulso { background: var(--capa-parado); }
+
+/* --- período: um filtro, não um campo de formulário ------------------------ */
+/* Era um <select> de 90x30px com anel de foco invisível que submetia na
+   primeira seta do teclado. Agora são links: a navegação por teclado anda a
+   lista inteira antes de escolher, e sem JavaScript continua funcionando. */
+
+.periodo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0 var(--e1);
+  margin-top: var(--e5);
+}
+
+.periodo-rotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  margin-right: auto;
+  padding-bottom: var(--e3);
+  color: var(--capa-fraco);
+  font-size: var(--t-apoio);
+}
+
+.periodo-rotulo svg { width: var(--e4); height: var(--e4); flex: none; }
+
+.periodo-item {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--e3) var(--e4);
+  border-bottom: 3px solid transparent;
+  color: var(--capa-fraco);
+  font-size: var(--t-apoio);
+  text-decoration: none;
+}
+
+.periodo-item:hover { color: var(--capa-texto); }
+
+.periodo-item.ativo {
+  color: var(--capa-texto);
+  font-weight: 600;
+  border-bottom-color: var(--capa-texto);
+}
 
 /* --- corpo ---------------------------------------------------------------- */
 
-main { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
-
-
-
-
-.n-bom { color: var(--bom); }
-.n-atencao { color: var(--atencao); }
-.n-ruim { color: var(--ruim); }
+main {
+  max-width: var(--coluna);
+  margin: 0 auto;
+  padding: 0 var(--e6);
+}
 
 .grandeza {
   display: grid;
   grid-template-columns: 290px 1fr;
-  gap: 36px;
+  gap: var(--e6);
   align-items: start;
-  padding: 30px 0;
+  padding: var(--e6) 0;
   border-top: 1px solid var(--regua);
 }
 
-.grandeza:first-of-type { border-top: 0; }
+.grandeza:first-of-type { border-top: 0; padding-top: var(--e5); }
 
-/* Mais espaco acima de um titulo do que abaixo dele. */
-.cabeca { display: flex; align-items: flex-start; gap: 13px; }
+/* --- leitura: uma margem esquerda só -------------------------------------- */
+/* O ladrilho de 42px punha título e frase 55px à direita do valor e da
+   explicação — duas margens esquerdas no mesmo bloco, nas três grandezas e
+   nos três breakpoints. E um quadrado saturado com glifo vazado é o selo que
+   a direção proíbe: codificava estado (já dito na frase) e categoria (já dita
+   no título) sem acrescentar nada. Virou glifo solto na cor do estado. */
 
-.leitura h2 { font-size: 1.1875rem; font-weight: 500; letter-spacing: -0.008em; }
+.leitura > * + * { margin-top: var(--e2); }
+
+.marca { width: var(--e7); height: var(--e7); display: block; }
+
+.marca.m-bom { color: var(--bom); }
+.marca.m-atencao { color: var(--atencao); }
+.marca.m-ruim { color: var(--ruim); }
+.marca.m-sem { color: var(--fraco); }
 
 .simbolos { display: none; }
 
-/* Ladrilho sólido com o glifo vazado, no lugar do contorno cinza de antes.
-   A cor dele é o estado, então categoria e situação se leem de uma vez. */
-.ladrilho {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  flex: none;
-  color: #fff;
+.leitura h2 {
+  font-size: var(--t-grandeza);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.5;
+  margin-top: var(--e3);
 }
 
-.ladrilho svg { width: 25px; height: 25px; }
-
-.ladrilho.t-bom { background: var(--bom); }
-.ladrilho.t-atencao { background: var(--atencao); }
-.ladrilho.t-ruim { background: var(--ruim); }
-.ladrilho.t-sem { background: var(--fraco); }
-
-.estado { margin-top: 3px; font-size: 0.9375rem; font-weight: 500; }
+.estado {
+  font-size: var(--t-titulo);
+  font-weight: 400;
+  line-height: 1.5;
+  margin-top: var(--e1);
+}
 
 .estado.e-bom { color: var(--bom); }
 .estado.e-atencao { color: var(--atencao); }
 .estado.e-ruim { color: var(--ruim); }
 
-
-
 .valor {
-  margin-top: 16px;
-  font-size: 2.375rem;
-  font-weight: 300;
-  letter-spacing: -0.03em;
+  font-size: var(--t-valor);
+  font-weight: 600;
+  letter-spacing: -0.025em;
   line-height: 1.05;
+  margin-top: var(--e3);
 }
 
 .unidade {
-  margin-left: 4px;
+  margin-left: var(--e1);
   color: var(--meio);
-  font-size: 0.9375rem;
+  font-size: var(--t-apoio);
   font-weight: 400;
   letter-spacing: 0;
 }
 
 .explicacao {
-  margin-top: 10px;
+  max-width: var(--medida);
   color: var(--meio);
-  font-size: 0.875rem;
+  font-size: var(--t-apoio);
+  line-height: 1.6;
+  margin-top: var(--e3);
+}
+
+/* O gráfico senta direto na página: um painel com borda em volta dele seria
+   um cartão, e o mundo escolhido não tem cartão. */
+.curva { position: relative; height: 188px; }
+
+/* --- pé: prosa à esquerda, ação à direita --------------------------------- */
+/* A exportação tinha uma seção inteira de 945x75px com border-top do mesmo
+   peso que separa as grandezas: um download com a patente estrutural de uma
+   grandeza medida. O rótulo fica — "Exportar 24 horas em CSV" diz o que sai,
+   e um botão chamado só "exportar" esconde isso. O bloco é que sai. */
+
+footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--e5) var(--e7);
+  max-width: var(--coluna);
+  margin: 0 auto;
+  padding: var(--e5) var(--e6) var(--e7);
+  border-top: 1px solid var(--regua);
+  color: var(--meio);
+  font-size: var(--t-apoio);
   line-height: 1.6;
 }
 
+.notas { max-width: var(--medida); }
+.notas p + p { margin-top: var(--e3); }
+.notas b { color: var(--tinta); font-weight: 600; }
 
+.ressalva { color: var(--ruim); }
 
-/* O grafico senta direto na pagina: um painel com borda em volta dele seria
-   um cartao, e o mundo escolhido nao tem cartao. */
-.curva { position: relative; height: 188px; padding-top: 2px; }
-
-
-/* --- pé ------------------------------------------------------------------- */
-
-footer {
-  max-width: 1120px;
-  margin: 10px auto 0;
-  padding: 20px 32px 44px;
-  border-top: 1px solid var(--regua);
-  color: var(--meio);
-  font-size: 0.875rem;
-  line-height: 1.7;
-}
-
-footer p + p { margin-top: 9px; }
-
-.fontes { color: var(--fraco); font-size: 0.8125rem; }
-
-.saude b { color: var(--tinta); font-weight: 500; font-variant-numeric: tabular-nums; }
-
-/* A exportacao traz o mesmo recorte que esta na tela, e o rotulo diz qual e:
-   um botao chamado so "exportar" esconde o que vai sair. */
-.acoes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 16px;
-  padding: 24px 0 4px;
-  border-top: 1px solid var(--regua);
-}
+/* O unico link de texto da pagina estava no azul padrao do navegador: o
+   #0000ee nao pertence a paleta nenhuma, e era o unico texto interativo sem
+   teal da pagina. */
+.notas a { color: var(--capa); text-underline-offset: 2px; }
+.notas a:hover { color: var(--capa-fundo); }
 
 .botao {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  padding: 10px 16px;
-  min-height: 42px;
+  gap: var(--e2);
+  min-height: 44px;
+  padding: var(--e3) var(--e4);
   border: 1px solid var(--capa);
   background: var(--capa);
   color: var(--capa-texto);
-  font-size: 0.9375rem;
+  font-size: var(--t-apoio);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .botao:hover { background: var(--capa-fundo); border-color: var(--capa-fundo); }
 
-.botao svg { width: 19px; height: 19px; flex: none; }
-
-.acoes-nota { color: var(--meio); font-size: 0.875rem; }
-
-footer p { max-width: 74ch; }
-
-.ressalva { color: var(--ruim); }
+.botao svg { width: var(--e4); height: var(--e4); flex: none; }
 
 /* --- celular: modo secundário --------------------------------------------- */
 
 @media (max-width: 760px) {
-  .capa-fita { padding: 18px 18px 20px; }
-  main { padding: 0 18px; }
-  footer { padding: 18px 18px 36px; }
+  .capa-campo { padding: var(--e4) var(--e4) 0; }
+  main { padding: 0 var(--e4); }
+  footer { grid-template-columns: minmax(0, 1fr); padding: var(--e5) var(--e4) var(--e6); }
 
-  
-  /* O gráfico passa a vir abaixo do texto: lado a lado em 360 px espremeria
+  .periodo { margin-top: var(--e4); justify-content: flex-start; }
+  .periodo-rotulo { margin-right: 0; width: 100%; padding-bottom: var(--e1); }
+  .periodo-item { padding: var(--e3); }
+
+  /* O gráfico passa a vir abaixo do texto: lado a lado em 360px espremeria
      os dois até nenhum ser legível. */
-  .grandeza { grid-template-columns: 1fr; gap: 16px; }
+  .grandeza { grid-template-columns: 1fr; gap: var(--e4); }
 
-  .curva { margin: 0; height: 180px; }
+  .curva { height: 180px; }
 }
 
+/* --- página de calibração -------------------------------------------------- */
 
-/* --- pagina de calibracao ------------------------------------------------ */
+.titulo-pagina {
+  margin: var(--e5) 0 var(--e3);
+  font-size: var(--t-titulo);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
 
-.capa h1 a { color: inherit; text-decoration: none; }
+.conteudo h3 {
+  margin: var(--e5) 0 var(--e3);
+  font-size: var(--t-grandeza);
+  font-weight: 600;
+}
 
-.titulo-pagina { margin: 26px 0 14px; font-size: 1.375rem; font-weight: 500; letter-spacing: -0.015em; }
+.explicacao.larga { margin-bottom: var(--e3); }
 
-.conteudo h3 { margin: 30px 0 10px; font-size: 1.0625rem; font-weight: 500; }
+.recado {
+  max-width: var(--medida);
+  margin-bottom: var(--e4);
+  padding: var(--e3) var(--e4);
+  font-size: var(--t-apoio);
+}
 
-.explicacao.larga { max-width: 68ch; margin-bottom: 14px; }
-
-.recado { padding: 12px 15px; margin-bottom: 16px; max-width: 68ch; font-size: 0.9375rem; }
-.recado.ok { background: #eef4ef; color: #2f6b45; border-left: 3px solid var(--bom); }
+.recado.ok { background: #eef4ef; color: var(--bom); border-left: 3px solid var(--bom); }
 .recado.erro { background: #f7ece9; color: var(--ruim); border-left: 3px solid var(--ruim); }
 
-.estado-calibracao { padding: 16px 0; border-top: 1px solid var(--regua);
-  border-bottom: 1px solid var(--regua); margin-bottom: 8px; }
+.estado-calibracao {
+  margin-bottom: var(--e2);
+  padding: var(--e4) 0;
+  border-top: 1px solid var(--regua);
+  border-bottom: 1px solid var(--regua);
+}
 
-.ficha { display: grid; grid-template-columns: auto 1fr; gap: 5px 18px; margin-top: 12px;
-  font-size: 0.9375rem; }
+.ficha {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--e1) var(--e4);
+  margin-top: var(--e3);
+  font-size: var(--t-apoio);
+}
+
 .ficha dt { color: var(--meio); }
-.ficha dd { margin: 0; font-variant-numeric: tabular-nums; }
+.ficha dd { margin: 0; }
 
-.passos { margin: 0 0 20px 18px; max-width: 68ch; color: var(--meio);
-  font-size: 0.9375rem; line-height: 1.65; }
-.passos li { margin-bottom: 6px; }
+.passos {
+  max-width: var(--medida);
+  margin: 0 0 var(--e5) var(--e4);
+  color: var(--meio);
+  font-size: var(--t-apoio);
+  line-height: 1.6;
+}
 
-.formulario { max-width: 420px; margin: 4px 0 26px; }
+.passos li { margin-bottom: var(--e1); }
 
-.campo { margin-bottom: 16px; }
-.campo label { display: block; margin-bottom: 5px; font-size: 0.9375rem; }
-.campo .opcional { color: var(--fraco); }
+.formulario { max-width: 420px; margin: var(--e1) 0 var(--e5); }
 
-.com-unidade { display: flex; align-items: center; gap: 8px; }
-.com-unidade span { color: var(--meio); font-size: 0.875rem; }
+.campo { margin-bottom: var(--e4); }
+.campo label { display: block; margin-bottom: var(--e1); font-size: var(--t-apoio); }
+.campo .opcional { color: var(--meio); }
+
+.com-unidade { display: flex; align-items: center; gap: var(--e2); }
+.com-unidade span { color: var(--meio); font-size: var(--t-apoio); }
+.com-unidade input { width: 140px; }
 
 .campo input {
-  font: inherit;
-  padding: 8px 10px;
-  min-height: 40px;
   width: 100%;
+  min-height: 44px;
+  padding: var(--e2) var(--e3);
   border: 1px solid var(--regua);
   background: var(--papel);
   color: var(--tinta);
+  font: inherit;
   font-variant-numeric: tabular-nums;
 }
-
-.com-unidade input { width: 140px; }
 
 .campo input:focus-visible { border-color: var(--capa); }
 
 .formulario button {
-  font: inherit;
-  padding: 10px 18px;
-  min-height: 42px;
+  min-height: 44px;
+  padding: var(--e3) var(--e4);
   border: 1px solid var(--capa);
   background: var(--capa);
   color: var(--capa-texto);
+  font: inherit;
+  font-size: var(--t-apoio);
   cursor: pointer;
 }
 
