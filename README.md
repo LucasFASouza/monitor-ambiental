@@ -132,6 +132,19 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now monitor-coletor monitor-coletor-ruido monitor-dashboard
 ```
 
+O `enable` é o que faz tudo subir sozinho quando o aparelho é ligado. Com
+`Restart=always` e `RestartSec=10`, serviço que falhe na largada tenta de novo
+indefinidamente — o coletor de ruído pode precisar disso, porque a placa I2S
+nem sempre está enumerada quando o `arecord` é chamado, e o `After=sound.target`
+do systemd não garante essa espera.
+
+Depois do primeiro boot com os três instalados, vale conferir que foi assim:
+
+```bash
+journalctl -b -u monitor-coletor -u monitor-coletor-ruido -u monitor-dashboard | head -20
+systemctl show monitor-coletor-ruido -p NRestarts --value
+```
+
 ### Atualizar depois
 
 Trocar o código não basta: os serviços seguem rodando o que carregaram no
