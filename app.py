@@ -267,66 +267,72 @@ def api_calibracao_gravar():
 
 @app.get("/exportar.csv")
 def exportar_csv():
-    """Baixa o histórico do período como CSV.
+    """Baixa o período inteiro num arquivo só, com os dois sensores.
 
-    Ar e ruído têm cadências diferentes — uma leitura por minuto contra uma
-    janela de LAeq por minuto — então saem em arquivos separados em vez de
-    serem forçados numa tabela só com buracos.
+    Os dois coletores gravam a cada 60 s, mas em instantes diferentes dentro do
+    minuto, então as linhas são agrupadas por minuto. Onde faltou leitura de um
+    dos sensores a célula fica vazia: é uma lacuna visível, melhor que um valor
+    repetido ou interpolado que ninguém pediu.
+
+    O ruído leva o dBFS cru e o offset ao lado do dB(A). Com eles, quem
+    recalibrar depois reinterpreta esta exportação sem repetir a medição.
     """
     horas = _inteiro("horas", padrao=24, minimo=1, maximo=24 * 365)
-    qual = request.args.get("de", "ar")
 
     ate = int(time.time())
     desde = ate - horas * 3600
     offset = database.offset_ruido()
 
+    with database.conectar() as conexao:
+        linhas = conexao.execute(
+            """
+            SELECT minuto,
+                   MAX(temperatura)  AS temperatura,
+                   MAX(umidade)      AS umidade,
+                   MAX(laeq_dbfs)    AS laeq_dbfs,
+                   MAX(lamax_dbfs)   AS lamax_dbfs,
+                   MAX(lamin_dbfs)   AS lamin_dbfs
+              FROM (
+                SELECT ts / 60 AS minuto, temperatura, umidade,
+                       NULL AS laeq_dbfs, NULL AS lamax_dbfs, NULL AS lamin_dbfs
+                  FROM leituras WHERE ts BETWEEN ? AND ?
+                UNION ALL
+                SELECT ts / 60, NULL, NULL, laeq_dbfs, lamax_dbfs, lamin_dbfs
+                  FROM leituras_ruido WHERE ts BETWEEN ? AND ?
+              )
+          GROUP BY minuto
+          ORDER BY minuto
+            """,
+            (desde, ate, desde, ate),
+        ).fetchall()
+
     saida = io.StringIO()
     escritor = csv.writer(saida)
+    escritor.writerow([
+        "data_hora_local", "data_hora_utc", "temperatura_c", "umidade_pct",
+        "ruido_laeq_dba", "ruido_lamax_dba", "ruido_lamin_dba",
+        "ruido_laeq_dbfs_cru", "ruido_offset_db",
+    ])
 
-    if qual == "ruido":
+    def db(valor):
+        return "" if valor is None else round(valor + offset, 1)
+
+    for linha in linhas:
+        ts = linha["minuto"] * 60
         escritor.writerow([
-            "data_hora_local", "data_hora_utc", "laeq_dba", "lamax_dba",
-            "lamin_dba", "laeq_dbfs_cru", "offset_db",
+            datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
+            _iso(ts),
+            "" if linha["temperatura"] is None else linha["temperatura"],
+            "" if linha["umidade"] is None else linha["umidade"],
+            db(linha["laeq_dbfs"]),
+            db(linha["lamax_dbfs"]),
+            db(linha["lamin_dbfs"]),
+            "" if linha["laeq_dbfs"] is None else round(linha["laeq_dbfs"], 2),
+            "" if linha["laeq_dbfs"] is None else offset,
         ])
-        with database.conectar() as conexao:
-            linhas = conexao.execute(
-                "SELECT ts, laeq_dbfs, lamax_dbfs, lamin_dbfs FROM leituras_ruido"
-                " WHERE ts BETWEEN ? AND ? ORDER BY ts",
-                (desde, ate),
-            ).fetchall()
 
-        for linha in linhas:
-            escritor.writerow([
-                datetime.fromtimestamp(linha["ts"]).strftime("%Y-%m-%d %H:%M:%S"),
-                _iso(linha["ts"]),
-                round(linha["laeq_dbfs"] + offset, 1),
-                round(linha["lamax_dbfs"] + offset, 1),
-                round(linha["lamin_dbfs"] + offset, 1),
-                # O valor cru vai junto: com ele, quem recalibrar depois
-                # consegue reinterpretar esta exportação sem repetir a medição.
-                round(linha["laeq_dbfs"], 2),
-                offset,
-            ])
-        nome = f"ruido-{horas}h.csv"
-    else:
-        escritor.writerow([
-            "data_hora_local", "data_hora_utc", "temperatura_c", "umidade_pct",
-        ])
-        with database.conectar() as conexao:
-            linhas = conexao.execute(
-                "SELECT ts, temperatura, umidade FROM leituras"
-                " WHERE ts BETWEEN ? AND ? ORDER BY ts",
-                (desde, ate),
-            ).fetchall()
-
-        for linha in linhas:
-            escritor.writerow([
-                datetime.fromtimestamp(linha["ts"]).strftime("%Y-%m-%d %H:%M:%S"),
-                _iso(linha["ts"]),
-                linha["temperatura"],
-                linha["umidade"],
-            ])
-        nome = f"ar-{horas}h.csv"
+    carimbo = datetime.fromtimestamp(ate).strftime("%Y-%m-%d-%H%M")
+    nome = f"monitor-ambiental-{horas}h-{carimbo}.csv"
 
     return Response(
         saida.getvalue(),

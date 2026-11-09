@@ -236,6 +236,16 @@ def _marcas_por_ponto(desde: int, ate: int, horas: int, quantos: int):
     ]
 
 
+def duracao(segundos: int) -> str:
+    """Duração em português curto. O servidor também precisa formatar: sem isso
+    o primeiro desenho mostra "629 s" até o JavaScript arredondar."""
+    if segundos < 90:
+        return f"{segundos} s"
+    if segundos < 5400:
+        return f"{round(segundos / 60)} min"
+    return f"{round(segundos / 3600)} h"
+
+
 def _classificar(grandeza: str, valor: float) -> tuple[str, str]:
     """Nível e a frase que o descreve, distinguindo acima de abaixo."""
     nivel = avaliacao.classificar(grandeza, valor)
@@ -337,6 +347,7 @@ def montar(horas: int = 24) -> dict:
         "horas": horas,
         "periodos": PERIODOS,
         "idade_segundos": idade,
+        "idade": None if idade is None else duracao(idade),
         "atualizado": idade is not None and idade <= config.INTERVALO_SEGUNDOS * 3,
         "data_hora": None if leitura is None else _iso(leitura["ts"]),
         "ruido_calibrado": database.offset_ruido() != database.OFFSET_DE_CATALOGO,

@@ -45,12 +45,12 @@
 <main class="conteudo">
   {% if visao.idade_segundos is not none %}
     <p class="frescor {{ 'parado' if not visao.atualizado else '' }}">
-      {% if visao.atualizado %}
-        <span class="pulso" aria-hidden="true"></span><span id="idade">leitura de {{ visao.idade_segundos }} s atrás</span>
-      {% else %}
-        <span class="pulso" aria-hidden="true"></span>A coleta parou. Última leitura
-        <span id="idade">de {{ visao.idade_segundos }} s atrás</span>.
-      {% endif %}
+      <span class="pulso" aria-hidden="true"></span>
+      {%- if visao.atualizado %}
+        leitura de <span id="idade">{{ visao.idade }}</span> atrás
+      {%- else %}
+        A coleta parou. Última leitura há <span id="idade">{{ visao.idade }}</span>.
+      {%- endif %}
     </p>
   {% endif %}
 
@@ -82,6 +82,20 @@
       </div>
     </section>
   {% endfor %}
+
+  <div class="acoes">
+    <a class="botao" href="{{ url_for('exportar_csv', horas=visao.horas) }}" download>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3.6v11.2"/><path d="m7.6 10.6 4.4 4.4 4.4-4.4"/>
+        <path d="M4.4 19.2h15.2"/>
+      </svg>
+      Exportar
+      {%- for horas, rotulo in visao.periodos %}{% if horas == visao.horas %} {{ rotulo|lower }}{% endif %}{% endfor %}
+      em CSV
+    </a>
+    <span class="acoes-nota">Temperatura, umidade e ruído no mesmo arquivo, uma linha por minuto.</span>
+  </div>
 </main>
 
 <footer>
@@ -91,13 +105,7 @@
       com certificado de calibração. <a href="{{ url_for('pagina_calibracao') }}">Calibrar</a>.</p>
   {% endif %}
 
-  <p class="acoes">
-    <a href="{{ url_for('exportar_csv', horas=visao.horas) }}">Baixar ar em CSV</a>
-    <a href="{{ url_for('exportar_csv', horas=visao.horas, de='ruido') }}">Baixar ruído em CSV</a>
-    {% if visao.ruido_calibrado %}
-      <a href="{{ url_for('pagina_calibracao') }}">Calibração do ruído</a>
-    {% endif %}
-  </p>
+
   <p>A linha é a média de cada intervalo. A sombra atrás dela mostra o mínimo e o máximo do mesmo
     intervalo, então um pico curto não some na média. A régua colorida à esquerda marca as faixas
     na escala, e a vermelha só aparece quando a medição chega perto dela.</p>

@@ -227,19 +227,35 @@ footer p + p { margin-top: 9px; }
 
 .fontes { color: var(--fraco); font-size: 0.8125rem; }
 
-/* As acoes saem do periodo em vigor: baixar o CSV traz o mesmo recorte que
-   esta na tela, nao um padrao que o visitante nao escolheu. */
-.acoes { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; }
-
-.acoes a {
-  color: var(--tinta);
-  font-size: 0.875rem;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: var(--regua);
+/* A exportacao traz o mesmo recorte que esta na tela, e o rotulo diz qual e:
+   um botao chamado so "exportar" esconde o que vai sair. */
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 24px 0 4px;
+  border-top: 1px solid var(--regua);
 }
 
-.acoes a:hover { text-decoration-color: var(--tinta); }
+.botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px;
+  min-height: 42px;
+  border: 1px solid var(--capa);
+  background: var(--capa);
+  color: var(--capa-texto);
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+.botao:hover { background: var(--capa-fundo); border-color: var(--capa-fundo); }
+
+.botao svg { width: 19px; height: 19px; flex: none; }
+
+.acoes-nota { color: var(--meio); font-size: 0.875rem; }
 
 footer p { max-width: 74ch; }
 

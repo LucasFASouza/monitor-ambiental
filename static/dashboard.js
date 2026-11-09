@@ -172,11 +172,14 @@
 
   if (idade) {
     let segundos = Number((idade.textContent.match(/\d+/) || [0])[0]);
+    const unidade = idade.textContent.trim().split(/\s+/)[1] || "s";
+    if (unidade === "min") segundos *= 60;
+    else if (unidade === "h") segundos *= 3600;
 
+    // Só a duração: a frase em volta vem do template, que sabe se a coleta
+    // está viva ou parada. Escrever a frase inteira aqui duplicava palavra.
     const descrever = (s) =>
-      s < 90 ? `leitura de ${s} s atrás`
-      : s < 5400 ? `leitura de ${Math.round(s / 60)} min atrás`
-      : `leitura de ${Math.round(s / 3600)} h atrás`;
+      s < 90 ? `${s} s` : s < 5400 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
 
     setInterval(() => { idade.textContent = descrever(++segundos); }, 1000);
   }
