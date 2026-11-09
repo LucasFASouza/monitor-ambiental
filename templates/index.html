@@ -87,12 +87,19 @@
   {% for b in visao.blocos %}
     <section class="grandeza" aria-label="{{ b.nome }}">
       <div class="leitura">
-        <svg class="marca m-{{ b.nivel or 'sem' }}" aria-hidden="true">
+        {# Leitura velha é degradada, não pintada como atual: glifo cinza, valor
+           apagado e a frase trocada pela idade. O princípio 3 do PRODUCT.md diz
+           que um número errado com aparência de certo é pior que uma lacuna
+           admitida, e era exatamente isso que acontecia aqui. #}
+        <svg class="marca m-{{ b.nivel if b.atualizado else 'sem' }}" aria-hidden="true">
           <use href="#i-{{ b.chave }}"></use>
         </svg>
         <h2>{{ b.nome }}</h2>
         {% if b.valor is none %}
           <p class="estado">Sem leitura</p>
+        {% elif not b.atualizado %}
+          <p class="estado parada">Sem leitura há {{ b.idade }}</p>
+          <p class="valor velho">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>
         {% else %}
           <p class="estado e-{{ b.nivel }}">{{ b.frase|capitalize }}</p>
           <p class="valor">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>

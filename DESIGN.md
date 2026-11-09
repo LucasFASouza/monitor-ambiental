@@ -254,12 +254,16 @@ rótulo embaixo, não 14px cinza no meio da prosa.
 
 O componente central. Construído em `grafico.py`, no servidor.
 
-Anatomia, de fora para dentro: régua de faixas colorida no eixo Y; marcas
-numéricas da escala à esquerda dela, pulando valores que caem em cima de um
-limite; régua de limite normativo atravessando a área, com o valor rotulado
-numa calha reservada à direita; eixo do tempo embaixo com cinco marcas, a
-última sempre "agora"; envelope de mínimo e máximo por balde; a média por cima
-de tudo; e um ponto marcando a leitura atual.
+Anatomia, de fora para dentro: régua de faixas colorida encostada na área de
+plotagem; réguas de limite normativo atravessando a área; o intervalo de
+referência rotulado uma vez numa calha à direita, com a unidade — "18–25 °C",
+"40–60 %", "45–65 dB(A)"; eixo do tempo embaixo; envelope de mínimo e máximo
+por balde; e a média por cima de tudo.
+
+**O eixo Y não imprime valor nenhum.** A escala é dada pela régua de faixas e
+por esse rótulo. A coluna de marcas numéricas repetia a unidade a cada linha,
+empurrava a régua para 50px de distância da curva que ela deveria qualificar, e
+rotulava limites de janela como "29,2 dB(A)", com cara de referência.
 
 Eixo Y **fixo nas faixas de classificação**, nunca autoescalado nos dados.
 
@@ -282,6 +286,12 @@ vigente diz que não tem.
 
 **Faça** o monitor relatar o que não sabe: leitura perdida, buraco no
 histórico, nível não calibrado.
+
+**Faça** a leitura velha ser degradada, nunca pintada como atual: glifo cinza,
+valor apagado, a frase de condição trocada pela idade, e sem cor de estado —
+ela descreveria um agora que o aparelho não conhece. Cada grandeza tem a
+própria idade: a do ar vem do DHT11, a do ruído do microfone, e uma não
+responde pela outra.
 
 **Não** use cartão. Nem para agrupar, nem para destacar, nem em volta do
 gráfico. A régua e o espaço fazem esse trabalho.

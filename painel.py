@@ -292,6 +292,29 @@ def _classificar(grandeza: str, valor: float) -> tuple[str, str]:
     return nivel, CONDICAO[nivel]
 
 
+def _rotulo_da_faixa(d: dict, ymin: float, ymax: float) -> dict | None:
+    """O intervalo de referência da grandeza, com a unidade, num rótulo só.
+
+    Antes a calha mostrava "25" e "18": dois inteiros sem unidade, ao lado de
+    um eixo que já dizia "25 °C". Com o eixo sem valores, este rótulo passa a
+    ser o único lugar onde a escala é nomeada.
+    """
+    visiveis = sorted((v, r) for v, r in d["reguas"] if ymin <= v <= ymax)
+
+    if not visiveis:
+        return None
+
+    if len(visiveis) == 1:
+        valor, rotulo = visiveis[0]
+        return {"de": valor, "ate": valor, "rotulo": f"{rotulo} {d['unidade']}"}
+
+    return {
+        "de": visiveis[0][0],
+        "ate": visiveis[-1][0],
+        "rotulo": f"{visiveis[0][1]}\u2013{visiveis[-1][1]} {d['unidade']}",
+    }
+
+
 def montar(horas: int = 24) -> dict:
     """Tudo que o template precisa para desenhar a página."""
     horas = min(max(horas, 1), 24 * 90)
@@ -305,7 +328,21 @@ def montar(horas: int = 24) -> dict:
     serie_ar = database.historico(desde, ate, max_pontos=600)
     serie_ruido = database.historico_ruido(desde, ate, max_pontos=600)
 
-    rotulos = _rotulos_de_tempo(desde, ate, horas)
+    # Idade por sensor. Antes havia uma só, derivada de leituras do ar, e o
+    # bloco de ruído não tinha verificação nenhuma: um valor de qualquer idade
+    # renderizava como atual. Num contexto ocupacional isso é exatamente o que
+    # o princípio 3 do PRODUCT.md proíbe.
+    idade_ar = None if leitura is None else max(ate - leitura["ts"], 0)
+    idade_ruido = None if ruido is None else max(ate - ruido["ts"], 0)
+
+    def _fresco(idade, janela):
+        return idade is not None and idade <= janela * 3
+
+    idades = {
+        "temperatura": (idade_ar, config.INTERVALO_SEGUNDOS),
+        "umidade": (idade_ar, config.INTERVALO_SEGUNDOS),
+        "ruido": (idade_ruido, config.RUIDO_JANELA_SEGUNDOS),
+    }
 
     atuais = {}
     if leitura:
@@ -327,7 +364,11 @@ def montar(horas: int = 24) -> dict:
         valor = atuais.get(chave)
         nivel, frase = _classificar(chave, valor) if valor is not None else (None, None)
 
-        if nivel:
+        idade_do_bloco, janela_do_bloco = idades[chave]
+        fresco = _fresco(idade_do_bloco, janela_do_bloco)
+
+        # Leitura velha não vota na condição geral: ela não descreve o agora.
+        if nivel and fresco:
             niveis.append(nivel)
 
         janela_min, janela_max = _janela(chave, series[chave])
@@ -340,6 +381,8 @@ def montar(horas: int = 24) -> dict:
         blocos.append({
             "chave": chave,
             "nome": d["nome"],
+            "atualizado": fresco,
+            "idade": None if idade_do_bloco is None else duracao(idade_do_bloco),
             "unidade": d["unidade"],
             "explicacao": d["explicacao"],
             "norma": d["norma"],
@@ -357,6 +400,10 @@ def montar(horas: int = 24) -> dict:
                 "faixas": _faixas_visiveis(chave, janela_min, janela_max),
                 "reguas": [{"valor": v, "rotulo": r} for v, r in d["reguas"]
                            if janela_min <= v <= janela_max],
+                # Um rótulo só para a faixa inteira, no lugar de dois inteiros
+                # nus na calha. O eixo Y não imprime mais valor nenhum, então
+                # é aqui que a unidade aparece.
+                "faixa": _rotulo_da_faixa(d, janela_min, janela_max),
             },
             "valor": None if valor is None else f"{valor:.{d['casas']}f}".replace(".", ","),
             "nivel": nivel,
@@ -376,7 +423,6 @@ def montar(horas: int = 24) -> dict:
     geral = avaliacao.condicao_geral(*niveis) if niveis else None
     fora = [b for b in blocos if b["nivel"] and b["nivel"] != "bom"]
 
-    idade = None if leitura is None else max(ate - leitura["ts"], 0)
 
     return {
         "dados_json": json.dumps(
@@ -387,8 +433,8 @@ def montar(horas: int = 24) -> dict:
         "fora": fora,
         "horas": horas,
         "periodos": PERIODOS,
-        "idade_segundos": idade,
-        "idade": None if idade is None else duracao(idade),
+        "idade_segundos": idade_ar,
+        "idade": None if idade_ar is None else duracao(idade_ar),
         "saude": {
             "coberto": duracao(saude["coberto_segundos"]),
             "pedido": duracao(saude["periodo_segundos"]),
@@ -397,7 +443,7 @@ def montar(horas: int = 24) -> dict:
             "ar": resumo_sensor(saude["ar"]),
             "ruido": resumo_sensor(saude["ruido"]),
         },
-        "atualizado": idade is not None and idade <= config.INTERVALO_SEGUNDOS * 3,
+        "atualizado": _fresco(idade_ar, config.INTERVALO_SEGUNDOS),
         "data_hora": None if leitura is None else _iso(leitura["ts"]),
         "ruido_calibrado": database.offset_ruido() != database.OFFSET_DE_CATALOGO,
         # O setor de ruído mostra o offset na própria entrada de calibração:

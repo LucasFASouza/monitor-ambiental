@@ -40,8 +40,11 @@
     },
   };
 
-  /* O limite normativo atravessa a área e se rotula numa calha à direita.
-     Dentro da área ele colidiria com a série. */
+  /* O limite normativo atravessa a área e a faixa inteira se rotula uma vez
+     na calha à direita. Dentro da área o rótulo colidiria com a série, e dois
+     inteiros nus — "25" e "18" — não diziam nem a unidade nem que eram
+     limites. Com o eixo Y sem valores, este é o único lugar onde a escala é
+     nomeada. */
   const reguasDeLimite = {
     id: "limites",
     afterDatasetsDraw(gr) {
@@ -50,26 +53,40 @@
 
       const { ctx, chartArea: area, scales } = gr;
       const tinta = cor("--limite");
+      const faixa = gr.options.plugins.limites.faixa;
 
       ctx.save();
-      ctx.font = `13px ${fonte}`;
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
+      ctx.strokeStyle = tinta;
+      ctx.lineWidth = 1;
 
       for (const r of reguas) {
         const y = scales.y.getPixelForValue(r.valor);
-        ctx.strokeStyle = tinta;
-        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(area.left, y);
         ctx.lineTo(area.right, y);
         ctx.stroke();
-
-        ctx.fillStyle = tinta;
-        ctx.fillText(r.rotulo, area.right + 8, y);
       }
+
+      if (faixa) {
+        const topo = scales.y.getPixelForValue(faixa.ate);
+        const base = scales.y.getPixelForValue(faixa.de);
+        ctx.font = `13px ${fonte}`;
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "left";
+        ctx.fillStyle = tinta;
+        ctx.fillText(faixa.rotulo, area.right + 10, (topo + base) / 2);
+      }
+
       ctx.restore();
     },
+  };
+
+  /* A calha precisa caber o rótulo, que muda de largura por grandeza:
+     "18–25 °C" e "45–65 dB(A)" não medem o mesmo. */
+  const regua = document.createElement("canvas").getContext("2d");
+  const larguraDoRotulo = (texto) => {
+    regua.font = `13px ${fonte}`;
+    return Math.ceil(regua.measureText(texto).width);
   };
 
   function desenhar(chave, d) {
@@ -101,12 +118,21 @@
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
-        layout: { padding: { left: 16, right: 36, top: 6 } },
+        layout: {
+          padding: {
+            // 14px deixam a régua de faixas (9px em x=0) encostada na área de
+            // plotagem. Antes eram 16px mais a coluna de rótulos do eixo, e a
+            // régua ficava a 50px da curva que deveria qualificar.
+            left: 14,
+            right: d.faixa ? larguraDoRotulo(d.faixa.rotulo) + 18 : 18,
+            top: 6,
+          },
+        },
         interaction: { mode: "index", intersect: false },
         plugins: {
           legend: { display: false },
           faixas: { lista: d.faixas },
-          limites: { lista: d.reguas },
+          limites: { lista: d.reguas, faixa: d.faixa },
           tooltip: {
             backgroundColor: cor("--tinta"),
             padding: 10,
@@ -138,18 +164,12 @@
             max: d.ymax,
             grid: { display: false },
             border: { display: false },
-            ticks: {
-              color: cor("--meio"),
-              font: { family: fonte, size: 12.5 },
-              stepSize: d.passo,
-              // Sem isto o eixo rotula os próprios limites da janela, e
-              // aparece "29,2 dB(A)" com cara de referência. A janela precisa
-              // ficar exata: arredondá-la empurraria a faixa vermelha para
-              // dentro de um período que nunca chegou nela.
-              includeBounds: false,
-              // A unidade no eixo: sem ela o número não diz o que mede.
-              callback: (v) => `${v} ${d.unidade}`,
-            },
+            // O eixo não imprime valor nenhum. A escala é dada pela régua de
+            // faixas e pelo rótulo do intervalo de referência; a coluna de
+            // números repetia a unidade a cada marca e empurrava a régua para
+            // longe da curva. Também encerra o problema dos limites da janela
+            // aparecerem como "29,2 dB(A)", com cara de referência.
+            ticks: { display: false },
           },
         },
       },

@@ -212,6 +212,11 @@ main {
 
 .grandeza:first-of-type { border-top: 0; }
 
+/* Item de grid tem min-width auto por padrão, então conteúdo largo demais
+   — um canvas que ainda não encolheu — pode empurrar a própria coluna e
+   impedir que ela volte. Defensivo. */
+.grandeza > * { min-width: 0; }
+
 /* --- leitura: uma margem esquerda só -------------------------------------- */
 /* O ladrilho de 42px punha título e frase 55px à direita do valor e da
    explicação — duas margens esquerdas no mesmo bloco, nas três grandezas e
@@ -244,6 +249,15 @@ main {
   line-height: 1.5;
   margin-top: var(--e1);
 }
+
+/* Leitura velha: sem cor de estado, porque ela descreveria um agora que o
+   aparelho não conhece. O valor fica, apagado, porque apagá-lo esconderia a
+   última coisa que se sabe. */
+.estado.parada { color: var(--meio); }
+/* O número apagado usa --fraco, que a 34px conta como texto grande e passa em
+   3:1. A unidade fica em --meio: a 14px ela precisa de 4,5:1, e --fraco dá
+   3,75. */
+.valor.velho { color: var(--fraco); }
 
 .estado.e-bom { color: var(--bom); }
 .estado.e-atencao { color: var(--atencao); }
