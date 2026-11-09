@@ -236,7 +236,7 @@ def _marcas_por_ponto(desde: int, ate: int, horas: int, quantos: int):
     ]
 
 
-def _resumo_sensor(d: dict) -> dict:
+def resumo_sensor(d: dict) -> dict:
     """Traduz os números de um sensor para o que a página mostra."""
     return {
         "leituras": d["leituras"],
@@ -378,11 +378,14 @@ def montar(horas: int = 24) -> dict:
             "pedido": duracao(saude["periodo_segundos"]),
             "fracao_coberta": saude["fracao_coberta"],
             "alerta_cobertura": alerta_cobertura,
-            "ar": _resumo_sensor(saude["ar"]),
-            "ruido": _resumo_sensor(saude["ruido"]),
+            "ar": resumo_sensor(saude["ar"]),
+            "ruido": resumo_sensor(saude["ruido"]),
         },
         "atualizado": idade is not None and idade <= config.INTERVALO_SEGUNDOS * 3,
         "data_hora": None if leitura is None else _iso(leitura["ts"]),
         "ruido_calibrado": database.offset_ruido() != database.OFFSET_DE_CATALOGO,
+        # O setor de ruído mostra o offset na própria entrada de calibração:
+        # "Calibrado em +2,40 dB" diz mais do que "Calibrado".
+        "ruido_offset": f"{database.offset_ruido():+.2f}".replace(".", ","),
         "intervalo": config.INTERVALO_SEGUNDOS,
     }

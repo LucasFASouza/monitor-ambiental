@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Protótipo · filtro de período</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='prototipo.css') }}">
+</head>
+<body class="prototipo">
+
+<svg class="simbolos" aria-hidden="true">
+  <symbol id="i-temperatura" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.5a2.4 2.4 0 0 1 2.4 2.4v7.3a4.6 4.6 0 1 1-4.8 0V5.9A2.4 2.4 0 0 1 12 3.5Z"/>
+    <path d="M12 9.2v7.4"/>
+  </symbol>
+  <symbol id="i-filtro" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.8 5.4h16.4l-6.4 7.4v6.1l-3.6 1.7v-7.8Z"/>
+  </symbol>
+  <symbol id="i-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m6.5 9.5 5.5 5.5 5.5-5.5"/>
+  </symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.2 2"/>
+  </symbol>
+</svg>
+
+<p class="aviso-prototipo">Protótipo. Três tratamentos do filtro de período, no cabeçalho e
+  com os dados reais. Todos funcionam: abra o menu, troque o período. Abaixo de cada um,
+  o que ele custa.</p>
+
+{% set b = visao.blocos[0] %}
+
+{# ─────────────────────────────── A ─────────────────────────────── #}
+<section class="amostra v-a">
+  <h2 class="rotulo-variante"><span>A</span> Botão de filtro com menu</h2>
+
+  <div class="moldura">
+    <header class="capa">
+      <div class="capa-campo unico">
+        <div class="capa-topo">
+          <h1>Monitor ambiental</h1>
+          <div class="capa-direita">
+            <p class="frescor"><span class="pulso" aria-hidden="true"></span>
+              leitura de {{ visao.idade }} atrás</p>
+            <details class="filtro-menu">
+              <summary>
+                <svg class="f-funil" aria-hidden="true"><use href="#i-filtro"></use></svg>
+                {%- for horas, rotulo in visao.periodos %}{% if horas == visao.horas %}{{ rotulo }}{% endif %}{% endfor %}
+                <svg class="f-seta" aria-hidden="true"><use href="#i-seta"></use></svg>
+              </summary>
+              <ul>
+                {% for horas, rotulo in visao.periodos %}
+                  <li><a href="{{ url_for('prototipo_periodo', horas=horas) }}"
+                         {% if horas == visao.horas %}aria-current="true"{% endif %}>{{ rotulo }}</a></li>
+                {% endfor %}
+              </ul>
+            </details>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main class="conteudo">
+      <section class="grandeza">
+        <div class="leitura">
+          <svg class="marca m-{{ b.nivel or 'sem' }}" aria-hidden="true"><use href="#i-temperatura"></use></svg>
+          <h2>{{ b.nome }}</h2>
+          <p class="estado e-{{ b.nivel }}">{{ b.frase|capitalize }}</p>
+          <p class="valor">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>
+        </div>
+        <div class="curva"><canvas data-grafico="{{ b.chave }}" role="img"
+          aria-label="Histórico de {{ b.nome|lower }}"></canvas></div>
+      </section>
+    </main>
+  </div>
+
+  <p class="custo">Uma linha só, e o período escolhido fica legível de longe. O preço: as outras
+    três opções exigem um clique para serem vistas, então ninguém descobre que existem 30 dias
+    sem abrir o menu.</p>
+</section>
+
+{# ─────────────────────────────── B ─────────────────────────────── #}
+<section class="amostra v-b">
+  <h2 class="rotulo-variante"><span>B</span> Fora do cabeçalho, acima dos gráficos</h2>
+
+  <div class="moldura">
+    <header class="capa">
+      <div class="capa-campo unico">
+        <div class="capa-topo">
+          <h1>Monitor ambiental</h1>
+          <p class="frescor"><span class="pulso" aria-hidden="true"></span>
+            leitura de {{ visao.idade }} atrás</p>
+        </div>
+      </div>
+    </header>
+    <main class="conteudo">
+      <div class="barra-filtro">
+        <span class="barra-filtro-rotulo">
+          <svg aria-hidden="true"><use href="#i-relogio"></use></svg>
+          Mostrando
+        </span>
+        <div class="barra-filtro-opcoes">
+          {% for horas, rotulo in visao.periodos %}
+            <a href="{{ url_for('prototipo_periodo', horas=horas) }}"
+               class="{{ 'ativo' if horas == visao.horas else '' }}"
+               {% if horas == visao.horas %}aria-current="true"{% endif %}>{{ rotulo }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      <section class="grandeza">
+        <div class="leitura">
+          <svg class="marca m-{{ b.nivel or 'sem' }}" aria-hidden="true"><use href="#i-temperatura"></use></svg>
+          <h2>{{ b.nome }}</h2>
+          <p class="estado e-{{ b.nivel }}">{{ b.frase|capitalize }}</p>
+          <p class="valor">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>
+        </div>
+        <div class="curva"><canvas data-grafico="{{ b.chave }}" role="img"
+          aria-label="Histórico de {{ b.nome|lower }}"></canvas></div>
+      </section>
+    </main>
+  </div>
+
+  <p class="custo">O controle fica onde ele age, e o cabeçalho volta a ser só identidade e
+    frescor. O preço: mais uma faixa horizontal entre o cabeçalho e a primeira leitura, e no
+    celular ela empurra a leitura para baixo.</p>
+</section>
+
+{# ─────────────────────────────── C ─────────────────────────────── #}
+<section class="amostra v-c">
+  <h2 class="rotulo-variante"><span>C</span> Controle segmentado na linha do título</h2>
+
+  <div class="moldura">
+    <header class="capa">
+      <div class="capa-campo unico">
+        <div class="capa-topo">
+          <h1>Monitor ambiental</h1>
+          <div class="capa-direita">
+            <p class="frescor"><span class="pulso" aria-hidden="true"></span>
+              leitura de {{ visao.idade }} atrás</p>
+            <div class="segmentado" role="group" aria-label="Período exibido">
+              {% for horas, rotulo in visao.periodos %}
+                <a href="{{ url_for('prototipo_periodo', horas=horas) }}"
+                   class="{{ 'ativo' if horas == visao.horas else '' }}"
+                   {% if horas == visao.horas %}aria-current="true"{% endif %}>{{ rotulo }}</a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main class="conteudo">
+      <section class="grandeza">
+        <div class="leitura">
+          <svg class="marca m-{{ b.nivel or 'sem' }}" aria-hidden="true"><use href="#i-temperatura"></use></svg>
+          <h2>{{ b.nome }}</h2>
+          <p class="estado e-{{ b.nivel }}">{{ b.frase|capitalize }}</p>
+          <p class="valor">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>
+        </div>
+        <div class="curva"><canvas data-grafico="{{ b.chave }}" role="img"
+          aria-label="Histórico de {{ b.nome|lower }}"></canvas></div>
+      </section>
+    </main>
+  </div>
+
+  <p class="custo">As quatro opções ficam visíveis sem clique, e o bloco fechado com divisórias
+    lê como controle, não como navegação. O preço: ocupa largura na linha do título e, no
+    celular, precisa quebrar para a linha de baixo.</p>
+</section>
+
+<script id="dados" type="application/json">{{ visao.dados_json|safe }}</script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}" defer></script>
+</body>
+</html>

@@ -46,6 +46,19 @@ def pagina():
     return render_template("index.html", visao=painel.montar(_inteiro("horas", 24, 1, 24 * 90)))
 
 
+@app.get("/prototipo/periodo")
+def prototipo_periodo():
+    """Três tratamentos do filtro de período, para escolher olhando.
+
+    Andaime: sai junto com templates/prototipo_periodo.html e
+    static/prototipo.css assim que a escolha for feita.
+    """
+    return render_template(
+        "prototipo_periodo.html",
+        visao=painel.montar(_inteiro("horas", 24, 1, 24 * 90)),
+    )
+
+
 def _bloco_ruido() -> dict | None:
     """Última medição de ruído, ou None se o coletor nunca rodou."""
     leitura = database.ultima_leitura_ruido()
@@ -339,6 +352,46 @@ def exportar_csv():
         mimetype="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{nome}"'},
     )
+
+
+def _virgula(valor) -> str:
+    """Decimal com vírgula, como o resto da interface escreve número."""
+    return str(valor).replace(".", ",")
+
+
+@app.get("/sistema")
+def pagina_sistema():
+    """O que o aparelho sabe sobre si mesmo: coleta, calibração e limites.
+
+    Material de sistema, não de leitura: sai do rodapé do painel, que virara
+    861 caracteres de prosa cinza sem cabeçalho, e ganha endereço próprio.
+    """
+    ate = int(time.time())
+    desde = ate - 24 * 3600
+
+    saude = database.saude_da_coleta(
+        desde, ate, config.INTERVALO_SEGUNDOS, config.RUIDO_JANELA_SEGUNDOS
+    )
+    offset = database.offset_ruido()
+    ultima = database.ultima_calibracao()
+
+    return render_template("sistema.html", sistema={
+        "saude": {
+            "ar": painel.resumo_sensor(saude["ar"]),
+            "ruido": painel.resumo_sensor(saude["ruido"]),
+        },
+        "calibrado": offset != database.OFFSET_DE_CATALOGO,
+        "offset": _virgula(f"{offset:+.2f}" if offset != database.OFFSET_DE_CATALOGO
+                           else f"{offset:.1f}"),
+        "ultima": None if ultima is None else {
+            "referencia_dba": _virgula(ultima["referencia_dba"]),
+            "medido_dbfs": _virgula(ultima["medido_dbfs"]),
+            "minutos": ultima["minutos"],
+            "quando": datetime.fromtimestamp(ultima["ts"]).strftime("%d/%m/%Y às %Hh%M"),
+            "observacao": ultima["observacao"],
+        },
+        "periodos": painel.PERIODOS,
+    })
 
 
 @app.get("/calibracao")

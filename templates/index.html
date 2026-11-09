@@ -29,6 +29,11 @@
           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <path d="M3.8 5.4h16.4l-6.4 7.4v6.1l-3.6 1.7v-7.8Z"/>
   </symbol>
+  <symbol id="i-aferir" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 16.4a8.4 8.4 0 0 1 16 0"/>
+    <path d="m12 16.4 4-5"/>
+  </symbol>
   <symbol id="i-baixar" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 3.6v11.2"/><path d="m7.6 10.6 4.4 4.4 4.4-4.4"/>
@@ -87,6 +92,22 @@
           <p class="valor">{{ b.valor }}<span class="unidade">{{ b.unidade }}</span></p>
         {% endif %}
         <p class="explicacao">{{ b.explicacao }}</p>
+        {%- if b.chave == 'ruido' %}
+          {# Permanente, e lendo o estado. Antes a unica rota para a calibracao
+             era uma palavra dentro de um paragrafo condicional no rodape: no
+             instante em que alguem calibrasse, o paragrafo sumia e a rota
+             sumia junto. #}
+          <p class="afericao">
+            <a href="{{ url_for('pagina_calibracao') }}">
+              <svg aria-hidden="true"><use href="#i-aferir"></use></svg>
+              {%- if visao.ruido_calibrado %}
+                Calibrado em {{ visao.ruido_offset }} dB · recalibrar
+              {%- else %}
+                Nível não calibrado · calibrar
+              {%- endif %}
+            </a>
+          </p>
+        {%- endif %}
       </div>
       <div class="curva">
         <canvas data-grafico="{{ b.chave }}"
@@ -98,29 +119,6 @@
 
 <footer>
   <div class="notas">
-    {% if not visao.ruido_calibrado %}
-      <p class="ressalva">O nível de ruído ainda não foi comparado com um medidor de referência.
-        Por enquanto, confie na variação e não no número. Este monitor não substitui instrumento
-        com certificado de calibração. <a href="{{ url_for('pagina_calibracao') }}">Calibrar</a>.</p>
-    {% endif %}
-
-    <p class="saude">
-      No período,
-      <b>{{ visao.saude.ar.leituras }}</b> leituras de ar
-      {%- if visao.saude.ar.completude_pct is not none %} ({{ visao.saude.ar.completude_pct }} % do esperado){% endif %}
-      e <b>{{ visao.saude.ruido.leituras }}</b> janelas de ruído
-      {%- if visao.saude.ruido.completude_pct is not none %} ({{ visao.saude.ruido.completude_pct }} %){% endif %}.
-      {%- set bar = visao.saude.ar.buracos %}
-      {%- set bruido = visao.saude.ruido.buracos %}
-      {%- if bar or bruido %}
-        A coleta
-        {%- if bar %} de ar parou {{ bar }} {{ 'vez' if bar == 1 else 'vezes' }}{% endif %}
-        {%- if bar and bruido %} e a de ruído {{ bruido }} {{ 'vez' if bruido == 1 else 'vezes' }}
-        {%- elif bruido %} de ruído parou {{ bruido }} {{ 'vez' if bruido == 1 else 'vezes' }}{% endif %}.
-        Cada parada aparece no gráfico como um trecho reto, não como queda.
-      {%- endif %}
-    </p>
-
     <p>A linha é a média de cada intervalo. A sombra atrás dela mostra o mínimo e o máximo do mesmo
       intervalo, então um pico curto não some na média. A régua colorida à esquerda marca as faixas
       na escala, e a vermelha só aparece quando a medição chega perto dela.</p>
@@ -128,6 +126,10 @@
     <p>Temperatura: faixa de 18 a 25 °C do item 17.8.4.2 da NR-17.
       Ruído: 45 dB(A) da NBR 10152:2017 e teto de 65 dB(A) do item 17.8.4.1.2 da NR-17.
       Umidade: convergência de fontes, sem norma brasileira vigente.</p>
+
+    <p><a href="{{ url_for('pagina_sistema') }}">Estado da coleta, calibração e limites do
+      aparelho</a>{% if visao.saude.ar.buracos or visao.saude.ruido.buracos %} — a coleta
+      foi interrompida neste período{% endif %}.</p>
   </div>
 
   <a class="botao" href="{{ url_for('exportar_csv', horas=visao.horas) }}" download>

@@ -262,6 +262,26 @@ main {
   margin-top: var(--e3);
 }
 
+/* Entrada de calibração, permanente dentro do setor de ruído. Não é botão: é
+   uma linha de estado que também leva à ação, então pesa menos que o valor
+   medido e mais que a explicação. */
+.afericao { margin-top: var(--e4); }
+
+.afericao a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  min-height: 44px;
+  padding: var(--e2) var(--e3) var(--e2) 0;
+  color: var(--capa);
+  font-size: var(--t-apoio);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.afericao a:hover { color: var(--capa-fundo); }
+.afericao svg { width: var(--e4); height: var(--e4); flex: none; }
+
 /* O gráfico senta direto na página: um painel com borda em volta dele seria
    um cartão, e o mundo escolhido não tem cartão. */
 .curva { position: relative; height: 188px; }
@@ -315,6 +335,39 @@ footer {
 .botao:hover { background: var(--capa-fundo); border-color: var(--capa-fundo); }
 
 .botao svg { width: var(--e4); height: var(--e4); flex: none; }
+
+/* Vazado para ações de mesma natureza enfileiradas: quatro botões sólidos em
+   sequência brigam entre si e nenhum fica sendo o principal. */
+.botao.vazado {
+  background: transparent;
+  color: var(--capa);
+}
+
+.botao.vazado:hover { background: var(--capa); color: var(--capa-texto); }
+
+/* Fileira de botões por gap, não por margin entre irmãos: margem no irmão
+   seguinte sobrevive à quebra de linha e empurra o primeiro item da linha de
+   baixo para fora da margem da página. */
+.fileira { display: flex; flex-wrap: wrap; gap: var(--e2); }
+
+/* Volta ao painel, dentro do campo teal. */
+.voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  min-height: 44px;
+  color: var(--capa-fraco);
+  font-size: var(--t-apoio);
+  text-decoration: none;
+}
+
+.voltar:hover { color: var(--capa-texto); text-decoration: underline; }
+.voltar svg { width: var(--e4); height: var(--e4); flex: none; }
+
+/* A /sistema e a /calibracao enfileiram botões e parágrafos; sem isto os
+   botões encostam no texto de cima. */
+.conteudo p + p { margin-top: var(--e3); }
+.conteudo p .botao { margin-top: var(--e1); }
 
 /* --- celular: modo secundário --------------------------------------------- */
 
