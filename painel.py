@@ -236,6 +236,17 @@ def _marcas_por_ponto(desde: int, ate: int, horas: int, quantos: int):
     ]
 
 
+def _resumo_sensor(d: dict) -> dict:
+    """Traduz os números de um sensor para o que a página mostra."""
+    return {
+        "leituras": d["leituras"],
+        "completude": d["completude"],
+        "completude_pct": None if d["completude"] is None else round(d["completude"] * 100),
+        "buracos": d["buracos"],
+        "perdido": duracao(d["perdido_segundos"]) if d["perdido_segundos"] else None,
+    }
+
+
 def duracao(segundos: int) -> str:
     """Duração em português curto. O servidor também precisa formatar: sem isso
     o primeiro desenho mostra "629 s" até o JavaScript arredondar."""
@@ -243,7 +254,11 @@ def duracao(segundos: int) -> str:
         return f"{segundos} s"
     if segundos < 5400:
         return f"{round(segundos / 60)} min"
-    return f"{round(segundos / 3600)} h"
+    if segundos < 48 * 3600:
+        return f"{round(segundos / 3600)} h"
+
+    dias = round(segundos / 86400)
+    return f"{dias} dia" if dias == 1 else f"{dias} dias"
 
 
 def _classificar(grandeza: str, valor: float) -> tuple[str, str]:
@@ -332,6 +347,16 @@ def montar(horas: int = 24) -> dict:
             "frase": frase,
         })
 
+    saude = database.saude_da_coleta(
+        desde, ate, config.INTERVALO_SEGUNDOS, config.RUIDO_JANELA_SEGUNDOS
+    )
+
+    # A ressalva só aparece quando há o que ressalvar. Avisar "99% coberto" em
+    # toda visita treina a pessoa a ignorar o aviso que importa.
+    alerta_cobertura = (
+        saude["fracao_coberta"] < 0.9 and saude["coberto_segundos"] > 0
+    )
+
     geral = avaliacao.condicao_geral(*niveis) if niveis else None
     fora = [b for b in blocos if b["nivel"] and b["nivel"] != "bom"]
 
@@ -348,6 +373,14 @@ def montar(horas: int = 24) -> dict:
         "periodos": PERIODOS,
         "idade_segundos": idade,
         "idade": None if idade is None else duracao(idade),
+        "saude": {
+            "coberto": duracao(saude["coberto_segundos"]),
+            "pedido": duracao(saude["periodo_segundos"]),
+            "fracao_coberta": saude["fracao_coberta"],
+            "alerta_cobertura": alerta_cobertura,
+            "ar": _resumo_sensor(saude["ar"]),
+            "ruido": _resumo_sensor(saude["ruido"]),
+        },
         "atualizado": idade is not None and idade <= config.INTERVALO_SEGUNDOS * 3,
         "data_hora": None if leitura is None else _iso(leitura["ts"]),
         "ruido_calibrado": database.offset_ruido() != database.OFFSET_DE_CATALOGO,

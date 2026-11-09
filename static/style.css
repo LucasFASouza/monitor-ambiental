@@ -227,6 +227,8 @@ footer p + p { margin-top: 9px; }
 
 .fontes { color: var(--fraco); font-size: 0.8125rem; }
 
+.saude b { color: var(--tinta); font-weight: 500; font-variant-numeric: tabular-nums; }
+
 /* A exportacao traz o mesmo recorte que esta na tela, e o rotulo diz qual e:
    um botao chamado so "exportar" esconde o que vai sair. */
 .acoes {

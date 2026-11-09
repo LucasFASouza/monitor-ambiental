@@ -352,6 +352,81 @@ def ultima_calibracao() -> dict | None:
     return dict(linha) if linha else None
 
 
+def saude_da_coleta(
+    desde: int, ate: int, intervalo: int, janela_ruido: int
+) -> dict:
+    """Quanto do período tem dado, e quão completo é dentro disso.
+
+    A conta ingênua — leituras presentes sobre leituras esperadas no período
+    inteiro — engana: se o coletor subiu há quatro horas, um recorte de 24 h
+    aparece como 16% de completude quando na verdade está completo no trecho em
+    que existiu. Aqui as duas coisas são medidas separadamente:
+
+    `cobertura` é o trecho do período que tem dado, da primeira à última
+    leitura. `completude` é quanto desse trecho está preenchido.
+
+    Um buraco é um salto entre leituras consecutivas maior que o triplo do
+    intervalo esperado: uma falha isolada do DHT11 não é buraco, é o sensor
+    sendo o que é.
+    """
+
+    def de_tabela(tabela: str, passo: int) -> dict:
+        with conectar() as conexao:
+            limites = conexao.execute(
+                f"SELECT MIN(ts) AS primeiro, MAX(ts) AS ultimo, COUNT(*) AS n"
+                f" FROM {tabela} WHERE ts BETWEEN ? AND ?",
+                (desde, ate),
+            ).fetchone()
+
+            buracos = conexao.execute(
+                f"""
+                SELECT COUNT(*) AS quantos, COALESCE(SUM(salto), 0) AS perdido
+                  FROM (
+                    SELECT ts - LAG(ts) OVER (ORDER BY ts) AS salto
+                      FROM {tabela} WHERE ts BETWEEN ? AND ?
+                  )
+                 WHERE salto > ?
+                """,
+                (desde, ate, passo * 3),
+            ).fetchone()
+
+        n = limites["n"] or 0
+
+        if n == 0:
+            return {"leituras": 0, "cobertura_segundos": 0, "completude": None,
+                    "buracos": 0, "perdido_segundos": 0,
+                    "primeiro": None, "ultimo": None}
+
+        cobertura = max((limites["ultimo"] - limites["primeiro"]), 0)
+        esperadas = max(cobertura // passo + 1, 1)
+
+        return {
+            "leituras": n,
+            "cobertura_segundos": cobertura,
+            "completude": min(round(n / esperadas, 4), 1.0),
+            "buracos": buracos["quantos"] or 0,
+            "perdido_segundos": int(buracos["perdido"] or 0),
+            "primeiro": limites["primeiro"],
+            "ultimo": limites["ultimo"],
+        }
+
+    ar = de_tabela("leituras", intervalo)
+    ruido = de_tabela("leituras_ruido", janela_ruido)
+
+    pedido = max(ate - desde, 1)
+    coberto = max(ar["cobertura_segundos"], ruido["cobertura_segundos"])
+
+    return {
+        "ar": ar,
+        "ruido": ruido,
+        "periodo_segundos": pedido,
+        "coberto_segundos": coberto,
+        # Quanto do recorte pedido realmente tem dado. É isto que diz se o
+        # gráfico de 24 h está mostrando 24 h ou quatro.
+        "fracao_coberta": round(coberto / pedido, 4),
+    }
+
+
 def total_leituras_ruido() -> int:
     with conectar() as conexao:
         return conexao.execute("SELECT COUNT(*) FROM leituras_ruido").fetchone()[0]

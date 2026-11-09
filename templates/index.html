@@ -54,6 +54,12 @@
     </p>
   {% endif %}
 
+  {% if visao.saude.alerta_cobertura %}
+    <p class="recado erro">O período selecionado é de {{ visao.saude.pedido }}, mas só há
+      dados de {{ visao.saude.coberto }}. Os gráficos abaixo cobrem menos tempo do que o
+      eixo sugere.</p>
+  {% endif %}
+
   {% for b in visao.blocos %}
     <section class="grandeza">
       <div class="leitura">
@@ -105,6 +111,23 @@
       com certificado de calibração. <a href="{{ url_for('pagina_calibracao') }}">Calibrar</a>.</p>
   {% endif %}
 
+
+  <p class="saude">
+    No período,
+    <b>{{ visao.saude.ar.leituras }}</b> leituras de ar
+    {%- if visao.saude.ar.completude_pct is not none %} ({{ visao.saude.ar.completude_pct }} % do esperado){% endif %}
+    e <b>{{ visao.saude.ruido.leituras }}</b> janelas de ruído
+    {%- if visao.saude.ruido.completude_pct is not none %} ({{ visao.saude.ruido.completude_pct }} %){% endif %}.
+    {%- set bar = visao.saude.ar.buracos %}
+    {%- set bruido = visao.saude.ruido.buracos %}
+    {%- if bar or bruido %}
+      A coleta
+      {%- if bar %} de ar parou {{ bar }} {{ 'vez' if bar == 1 else 'vezes' }}{% endif %}
+      {%- if bar and bruido %} e a de ruído {{ bruido }} {{ 'vez' if bruido == 1 else 'vezes' }}
+      {%- elif bruido %} de ruído parou {{ bruido }} {{ 'vez' if bruido == 1 else 'vezes' }}{% endif %}.
+      Cada parada aparece no gráfico como um trecho reto, não como queda.
+    {%- endif %}
+  </p>
 
   <p>A linha é a média de cada intervalo. A sombra atrás dela mostra o mínimo e o máximo do mesmo
     intervalo, então um pico curto não some na média. A régua colorida à esquerda marca as faixas
