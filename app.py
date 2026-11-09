@@ -46,19 +46,6 @@ def pagina():
     return render_template("index.html", visao=painel.montar(_inteiro("horas", 24, 1, 24 * 90)))
 
 
-@app.get("/prototipo/periodo")
-def prototipo_periodo():
-    """Três tratamentos do filtro de período, para escolher olhando.
-
-    Andaime: sai junto com templates/prototipo_periodo.html e
-    static/prototipo.css assim que a escolha for feita.
-    """
-    return render_template(
-        "prototipo_periodo.html",
-        visao=painel.montar(_inteiro("horas", 24, 1, 24 * 90)),
-    )
-
-
 def _bloco_ruido() -> dict | None:
     """Última medição de ruído, ou None se o coletor nunca rodou."""
     leitura = database.ultima_leitura_ruido()

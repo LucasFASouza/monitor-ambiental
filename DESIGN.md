@@ -63,13 +63,13 @@ components:
     textColor: "{colors.capa-texto}"
     padding: "24px 32px 0"
   periodo-item:
-    textColor: "{colors.capa-fraco}"
-    padding: "12px 16px"
+    textColor: "{colors.meio}"
+    padding: "8px 12px"
     minHeight: "44px"
   periodo-item-ativo:
+    backgroundColor: "{colors.capa}"
     textColor: "{colors.capa-texto}"
     fontWeight: 600
-    borderBottom: "3px solid {colors.capa-texto}"
   marca:
     size: "48px"
     strokeWidth: "1.9px"
@@ -158,6 +158,10 @@ Quatro degraus acima do corpo, e só quatro: a frase de situação e o título e
 1,25rem; o valor medido em 2,125rem; o nome da grandeza em 1,125rem; o apoio em
 0,875rem. Com o corpo em 1rem, a página inteira cabe em cinco tamanhos.
 
+O título de uma subpágina ocupa o degrau de 2,125rem, o mesmo do valor medido.
+Em 1,25rem ele ficava a 2px do cabeçalho de seção: numa página sem medição
+nenhuma, como a /sistema, isso deixa a hierarquia plana.
+
 **Dois pesos, e só dois:** 600 no título da capa, no nome da grandeza, no valor
 medido e na aba ativa do filtro; 400 em todo o resto, inclusive na frase de
 situação. Ela é maior que o nome da grandeza e mais leve — a resposta é o que
@@ -212,15 +216,20 @@ de largura para a régua de faixas do eixo.
 
 ### Navigation
 
-O cabeçalho não tem navegação: a página é uma só. O seletor de período são
-links com 44px de altura mínima, com o ativo marcado por peso e régua inferior,
-e essa régua encosta na borda de baixo do campo teal. Um ícone de funil e a
-palavra "Período" dizem que a fila é um filtro.
+O cabeçalho não tem navegação, e não carrega controle: a página é uma só, e ele
+é só identidade e frescor da leitura. O campo teal fecha embaixo em todas as
+páginas.
+
+O filtro de período vive no conteúdo, imediatamente acima dos gráficos que ele
+reescala — e imediatamente acima do aviso de cobertura, que fala do período
+escolhido nele. Dentro do campo, a mesma fila lia como barra de navegação de um
+site. São links com 44px de altura mínima, o ativo em campo teal sólido, os
+demais em `meio` sobre o fundo da página, precedidos de um relógio e da palavra
+"Mostrando".
 
 Links, não `<select>`: o campo de formulário submetia na primeira seta do
 teclado, então quem navega por teclado andava uma opção por carregamento de
-página e perdia o foco em cada uma. Páginas sem o filtro fecham o campo
-embaixo (`capa-campo.unico`).
+página e perdia o foco em cada uma.
 
 ### Gráfico
 

@@ -25,9 +25,9 @@
     <path d="M15 9.3a3.8 3.8 0 0 1 0 5.4"/>
     <path d="M17.8 6.6a7.6 7.6 0 0 1 0 10.8"/>
   </symbol>
-  <symbol id="i-filtro" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  <symbol id="i-relogio" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3.8 5.4h16.4l-6.4 7.4v6.1l-3.6 1.7v-7.8Z"/>
+    <circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.2 2"/>
   </symbol>
   <symbol id="i-aferir" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -42,7 +42,7 @@
 </svg>
 
 <header class="capa">
-  <div class="capa-campo">
+  <div class="capa-campo unico">
     <div class="capa-topo">
       <h1>Monitor ambiental</h1>
       {% if visao.idade_segundos is not none %}
@@ -56,22 +56,24 @@
         </p>
       {% endif %}
     </div>
-
-    <nav class="periodo" aria-label="Período exibido">
-      <span class="periodo-rotulo">
-        <svg aria-hidden="true"><use href="#i-filtro"></use></svg>
-        Período
-      </span>
-      {% for horas, rotulo in visao.periodos %}
-        <a class="periodo-item {{ 'ativo' if horas == visao.horas else '' }}"
-           href="{{ url_for('pagina', horas=horas) }}"
-           {% if horas == visao.horas %}aria-current="true"{% endif %}>{{ rotulo }}</a>
-      {% endfor %}
-    </nav>
   </div>
 </header>
 
 <main class="conteudo">
+  <nav class="barra-filtro" aria-label="Período exibido">
+    <span class="barra-filtro-rotulo">
+      <svg aria-hidden="true"><use href="#i-relogio"></use></svg>
+      Mostrando
+    </span>
+    <div class="barra-filtro-opcoes">
+      {% for horas, rotulo in visao.periodos %}
+        <a href="{{ url_for('pagina', horas=horas) }}"
+           class="{{ 'ativo' if horas == visao.horas else '' }}"
+           {% if horas == visao.horas %}aria-current="true"{% endif %}>{{ rotulo }}</a>
+      {% endfor %}
+    </div>
+  </nav>
+
   {% if visao.saude.alerta_cobertura %}
     <p class="recado erro">O período selecionado é de {{ visao.saude.pedido }}, mas só há
       dados de {{ visao.saude.coberto }}. Os gráficos abaixo cobrem menos tempo do que o

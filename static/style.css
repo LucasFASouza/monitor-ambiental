@@ -82,8 +82,8 @@ body {
   padding: var(--e5) var(--e6) 0;
 }
 
-/* Páginas sem o filtro de período fecham o campo embaixo: a régua do item
-   ativo é que encostava nessa borda. */
+/* Com o filtro fora do cabeçalho, nenhuma página tem algo encostado na borda
+   de baixo do campo: todas fecham. */
 .capa-campo.unico { padding-bottom: var(--e5); }
 
 .capa-topo {
@@ -137,49 +137,55 @@ body {
 .capa .frescor.parado { color: var(--capa-texto); }
 .capa .frescor.parado .pulso { background: var(--capa-parado); }
 
-/* --- período: um filtro, não um campo de formulário ------------------------ */
-/* Era um <select> de 90x30px com anel de foco invisível que submetia na
-   primeira seta do teclado. Agora são links: a navegação por teclado anda a
-   lista inteira antes de escolher, e sem JavaScript continua funcionando. */
+/* --- filtro de período: no conteúdo, não no cabeçalho --------------------- */
+/* Dentro do campo teal a fila de abas lia como barra de navegação de um site,
+   e o cabeçalho de uma página só não navega para lugar nenhum. Aqui o controle
+   fica onde ele age: imediatamente acima dos gráficos que ele reescala, e
+   imediatamente acima do aviso de cobertura, que fala do período escolhido
+   nele. Links, não <select>: o campo submetia na primeira seta do teclado. */
 
-.periodo {
+.barra-filtro {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 0 var(--e1);
-  margin-top: var(--e5);
+  align-items: center;
+  gap: var(--e3) var(--e4);
+  padding: var(--e4) 0;
+  border-bottom: 1px solid var(--regua);
 }
 
-.periodo-rotulo {
+.barra-filtro-rotulo {
   display: inline-flex;
   align-items: center;
   gap: var(--e2);
-  margin-right: auto;
-  padding-bottom: var(--e3);
-  color: var(--capa-fraco);
+  color: var(--meio);
   font-size: var(--t-apoio);
 }
 
-.periodo-rotulo svg { width: var(--e4); height: var(--e4); flex: none; }
+.barra-filtro-rotulo svg { width: var(--e4); height: var(--e4); flex: none; }
 
-.periodo-item {
+.barra-filtro-opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e1);
+  margin-left: auto;
+}
+
+.barra-filtro-opcoes a {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: var(--e3) var(--e4);
-  border-bottom: 3px solid transparent;
-  color: var(--capa-fraco);
+  padding: var(--e2) var(--e3);
+  color: var(--meio);
   font-size: var(--t-apoio);
   text-decoration: none;
 }
 
-.periodo-item:hover { color: var(--capa-texto); }
+.barra-filtro-opcoes a:hover { color: var(--tinta); }
 
-.periodo-item.ativo {
+.barra-filtro-opcoes a.ativo {
+  background: var(--capa);
   color: var(--capa-texto);
   font-weight: 600;
-  border-bottom-color: var(--capa-texto);
 }
 
 /* --- corpo ---------------------------------------------------------------- */
@@ -199,7 +205,7 @@ main {
   border-top: 1px solid var(--regua);
 }
 
-.grandeza:first-of-type { border-top: 0; padding-top: var(--e5); }
+.grandeza:first-of-type { border-top: 0; }
 
 /* --- leitura: uma margem esquerda só -------------------------------------- */
 /* O ladrilho de 42px punha título e frase 55px à direita do valor e da
@@ -376,9 +382,7 @@ footer {
   main { padding: 0 var(--e4); }
   footer { grid-template-columns: minmax(0, 1fr); padding: var(--e5) var(--e4) var(--e6); }
 
-  .periodo { margin-top: var(--e4); justify-content: flex-start; }
-  .periodo-rotulo { margin-right: 0; width: 100%; padding-bottom: var(--e1); }
-  .periodo-item { padding: var(--e3); }
+  .barra-filtro-opcoes { margin-left: 0; }
 
   /* O gráfico passa a vir abaixo do texto: lado a lado em 360px espremeria
      os dois até nenhum ser legível. */

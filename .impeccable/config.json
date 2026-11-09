@@ -11,15 +11,6 @@
         ],
         "createdAt": "2026-11-09T20:16:15.246Z",
         "reason": "Claude: o detector nao resolve {{ url_for('static', filename='style.css') }} no <link> e avisa isso na propria saida, entao le os defaults do navegador (body 16 / h1 16 / h2 16 = 1,00:1). Medido no render em 127.0.0.1:5077: 14/18/20/34px, maior passo adjacente 20->34 = 1,70:1, acima do alvo de 1,25:1. detect sobre a copia renderizada com o CSS ao lado retorna [] com saida 0."
-      },
-      {
-        "rule": "flat-type-hierarchy",
-        "value": "*",
-        "files": [
-          "templates/prototipo_periodo.html"
-        ],
-        "createdAt": "2026-11-09T20:28:33.761Z",
-        "reason": "Claude: mesma causa do index.html — o detector nao resolve os dois url_for do <link> e le os defaults do navegador. No render o prototipo contem os blocos de leitura com .valor em 34px, passo de 1,70:1 sobre a frase de situacao, e detect sobre a copia renderizada com os dois CSS ao lado retorna []. Alem disso e andaime temporario: sai junto com static/prototipo.css quando o filtro de periodo for escolhido."
       }
     ]
   }
