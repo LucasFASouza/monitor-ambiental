@@ -241,6 +241,10 @@ main {
    a direção proíbe: codificava estado (já dito na frase) e categoria (já dita
    no título) sem acrescentar nada. Virou glifo solto na cor do estado. */
 
+/* A leitura centraliza na altura da faixa; o gráfico fica no topo, porque a
+   faixa de 44px do disparador de informação é a primeira coisa dele. */
+.leitura { align-self: center; }
+
 .leitura > * + * { margin-top: var(--e2); }
 
 .marca { width: var(--e7); height: var(--e7); display: block; }
