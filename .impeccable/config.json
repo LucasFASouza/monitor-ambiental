@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-11-09T20:16:15.246Z",
         "reason": "Claude: o detector nao resolve {{ url_for('static', filename='style.css') }} no <link> e avisa isso na propria saida, entao le os defaults do navegador (body 16 / h1 16 / h2 16 = 1,00:1). Medido no render em 127.0.0.1:5077: 14/18/20/34px, maior passo adjacente 20->34 = 1,70:1, acima do alvo de 1,25:1. detect sobre a copia renderizada com o CSS ao lado retorna [] com saida 0."
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/calibracao.html"
+        ],
+        "createdAt": "2026-11-09T20:45:00.996Z",
+        "reason": "Claude: o detector nao resolve o url_for do <link> — avisa isso na propria saida — e le os defaults do navegador (body 16 / h1 16 / h2 16 / h3 16 = 1,00:1). Medido no render em 127.0.0.1:5077: papeis em 14/16/18/20/34px, maior passo adjacente 20->34 = 1,70:1, acima do alvo de 1,25:1. detect sobre a copia renderizada com o CSS ao lado retorna []. Diferente da /sistema, onde a mesma regra apontou problema real porque aquela pagina nao tinha nada acima de 20px: aqui o titulo de pagina ja ocupa o degrau de 2,125rem."
       }
     ]
   }
