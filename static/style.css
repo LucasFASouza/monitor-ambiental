@@ -389,11 +389,17 @@ footer {
 
 /* --- página de calibração -------------------------------------------------- */
 
+/* O título de uma subpágina é o degrau mais alto dela. Em 1,25rem ele ficava a
+   2px do h3 da seção e a 4px do corpo: três tamanhos quase iguais, hierarquia
+   plana. O painel escapa disso porque tem os 34px da medição; a /sistema e a
+   /calibracao não têm medição nenhuma, então o título precisa ocupar esse
+   degrau. */
 .titulo-pagina {
   margin: var(--e5) 0 var(--e3);
-  font-size: var(--t-titulo);
+  font-size: var(--t-valor);
   font-weight: 600;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 .conteudo h3 {
