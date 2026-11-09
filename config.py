@@ -77,24 +77,77 @@ RUIDO_OFFSET_DB = float(os.getenv("MONITOR_RUIDO_OFFSET", "120.0"))
 
 # --- Limites de classificação -----------------------------------------------
 #
-# PROVISÓRIOS. O handoff prevê definir e fundamentar esses limites depois.
-# Os valores abaixo são um ponto de partida de conforto de ambiente interno
-# (faixa de conforto térmico usual e a recomendação comum de 40% a 60% de
-# umidade relativa), não uma norma aplicada.
-#
 # Cada grandeza tem duas faixas fechadas: dentro de "bom" é bom, fora de "bom"
 # mas dentro de "atencao" é atenção, fora das duas é ruim.
 #
-# Lembrete ao revisar: a umidade do DHT11 tem precisão de ±5%, então limites
-# muito estreitos dariam uma falsa sensação de exatidão.
+# A faixa "bom" vem de norma vigente sempre que existe uma. A faixa "atencao" é
+# uma MARGEM escolhida a partir das fontes citadas, não um valor normativo: ela
+# serve para separar "fora do recomendado" de "ruim mesmo".
+#
+#
+# TEMPERATURA  ---------------------------------------------------------------
+#
+#   bom: 18 a 25 °C
+#     NR-17, item 17.8.4.2, redação da Portaria MTP 423/2021: "observando-se o
+#     parâmetro de faixa de temperatura do ar entre 18 e 25 °C para ambientes
+#     climatizados". É norma de segurança do trabalho em vigor.
+#
+#     O piso de 18 °C bate com o mínimo das Housing and health guidelines da
+#     OMS (2018), por caminho independente: lá a justificativa é mortalidade
+#     por frio, não conforto.
+#
+#   atenção: 16 a 28 °C  [margem]
+#     Abaixo de 18 °C já se está fora da NR-17, e 16 °C é onde a literatura de
+#     saúde pública passa a documentar risco respiratório. No teto, 25 °C é o
+#     limite da NR-17 e 26 °C era o da RE 09/2003 da ANVISA para verão, hoje
+#     revogada; 28 °C fica acima de qualquer referência de conforto.
+#
+#
+# UMIDADE  -------------------------------------------------------------------
+#
+#   bom: 40 a 60 %
+#     Convergência de fontes, e não de norma vigente: a revogada RE 09/2003 da
+#     ANVISA indicava 40 a 65 % no verão, e a OSHA recomenda 20 a 60 % (sem
+#     caráter obrigatório, apoiada na ASHRAE 55). A faixa de 40 a 60 % é a que
+#     aparece de forma consistente como a que minimiza tanto proliferação
+#     biológica quanto irritação respiratória.
+#
+#   atenção: 30 a 70 %  [margem]
+#     Abaixo de 30 % a irritação de vias aéreas é documentada; acima de 70 % o
+#     risco de mofo cresce rápido.
+#
+#   RESSALVA IMPORTANTE: esta é a grandeza com menos respaldo normativo direto.
+#   A NR-17 perdeu o número de umidade na revisão de 2021 — o item 17.8.4.2
+#   manda controlar a umidade, mas não diz qual faixa. E a RE 09/2003 da ANVISA
+#   foi revogada em julho de 2024 pela RDC 886/2024, substituída pela ABNT NBR
+#   17037, que é norma paga e não foi consultada aqui. Se algum dia este
+#   projeto for usado para fundamentar alguma coisa, é neste ponto que falta
+#   checagem.
+#
+#
+# RUÍDO  ---------------------------------------------------------------------
+#
+#   bom: até 45 dB(A)
+#     A NBR 10152:2017 indica cerca de 40 dB(A) como valor de projeto para
+#     escritório privativo, e a própria norma admite tolerância de até 5 dB.
+#
+#   atenção: até 65 dB(A)
+#     NR-17, item 17.8.4.1.2: "o nível de ruído de fundo aceitável para efeito
+#     de conforto acústico será de até 65 dB(A), nível de pressão sonora
+#     contínuo equivalente ponderado em A e no circuito de resposta Slow (S)".
+#
+#     É exatamente a grandeza que este monitor calcula: LAeq. A ressalva é o
+#     circuito Slow, que tem constante de tempo de 1 s e afeta o valor máximo,
+#     não o equivalente — o `lamax` daqui usa blocos de 1 s, o que é
+#     comparável, mas não é a mesma definição.
+#
+#   Nada disso é limite de insalubridade. Exposição ocupacional ao ruído é a
+#   NR-15 Anexo 1, com 85 dB(A) para 8 horas, e exige medidor Tipo 1 ou 2 com
+#   certificado de calibração. Ver a seção de calibração no README: este
+#   monitor acompanha tendência, não sustenta laudo.
 LIMITES = {
-    "temperatura": {"bom": (18.0, 26.0), "atencao": (16.0, 30.0)},
+    "temperatura": {"bom": (18.0, 25.0), "atencao": (16.0, 28.0)},
     "umidade": {"bom": (40.0, 60.0), "atencao": (30.0, 70.0)},
     # Para ruído só o teto importa, então a faixa começa em zero.
-    #
-    # Referência de conforto, não de insalubridade: a NBR 10152 recomenda algo
-    # entre 35 e 45 dB(A) para escritório. O limite ocupacional da NR-15
-    # Anexo 1 é outro assunto, 85 dB(A) para 8 horas, e exige decibelímetro
-    # calibrado — este monitor não substitui isso.
-    "ruido": {"bom": (0.0, 50.0), "atencao": (0.0, 65.0)},
+    "ruido": {"bom": (0.0, 45.0), "atencao": (0.0, 65.0)},
 }

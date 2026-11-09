@@ -131,6 +131,18 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now monitor-coletor monitor-coletor-ruido monitor-dashboard
 ```
 
+### Atualizar depois
+
+Trocar o código não basta: os serviços seguem rodando o que carregaram no
+início. Depois de um `git pull`, reinicie o que mudou.
+
+```bash
+cd ~/monitor-ambiental && git pull && sudo systemctl restart monitor-coletor monitor-coletor-ruido monitor-dashboard
+```
+
+Sem o `restart`, o sintoma é confuso: o arquivo novo está no disco, mas a API
+responde como antes — inclusive 404 em rota recém-criada.
+
 ### Ligação
 
 ```text
@@ -238,26 +250,60 @@ outro.
 
 ## Classificação
 
-Os limites ficam em `config.py`, em `LIMITES`:
+Os limites ficam em `config.py`, em `LIMITES`, com a fonte de cada número
+documentada ali.
 
-| Grandeza | Bom | Atenção | Ruim |
-| --- | --- | --- | --- |
-| Temperatura | 18 a 26 °C | 16 a 30 °C | fora disso |
-| Umidade | 40 a 60 % | 30 a 70 % | fora disso |
-| Ruído | até 50 dB(A) | até 65 dB(A) | acima disso |
+| Grandeza | Bom | Atenção | Ruim | Origem do "Bom" |
+| --- | --- | --- | --- | --- |
+| Temperatura | 18 a 25 °C | 16 a 28 °C | fora disso | NR-17, item 17.8.4.2 |
+| Umidade | 40 a 60 % | 30 a 70 % | fora disso | convergência de fontes |
+| Ruído | até 45 dB(A) | até 65 dB(A) | acima disso | NBR 10152:2017 |
 
 A condição geral é sempre a pior das três. Se não houver medição de ruído
 recente, ela considera só temperatura e umidade.
 
-Os limites de ruído são de **conforto**, não de insalubridade: a NBR 10152
-recomenda entre 35 e 45 dB(A) para escritório. O limite ocupacional da NR-15
-Anexo 1 é outro assunto, 85 dB(A) para 8 horas, e exige decibelímetro
-calibrado.
+A faixa **Bom** vem de norma vigente onde existe uma. A faixa **Atenção** é uma
+margem escolhida a partir das fontes, não um valor normativo: serve para
+separar "fora do recomendado" de "ruim mesmo".
 
-**Estes limites são provisórios.** São um ponto de partida de conforto de
-ambiente interno, não uma norma aplicada, e precisam ser definidos e
-fundamentados. Vale lembrar, ao revisar: a umidade do DHT11 tem precisão de
-±5%, então limites muito estreitos dariam uma falsa sensação de exatidão.
+### De onde vem cada número
+
+**Temperatura.** A NR-17, no item 17.8.4.2 (redação da Portaria MTP 423/2021),
+estabelece "faixa de temperatura do ar entre 18 e 25 °C para ambientes
+climatizados". É norma de segurança do trabalho em vigor. O piso de 18 °C bate,
+por caminho independente, com o mínimo das *Housing and health guidelines* da
+OMS (2018), onde a justificativa é mortalidade por frio e não conforto.
+
+**Ruído.** O teto de 65 dB(A) da faixa Atenção é literal da NR-17, item
+17.8.4.1.2: "o nível de ruído de fundo aceitável para efeito de conforto
+acústico será de até 65 dB(A), nível de pressão sonora contínuo equivalente
+ponderado em A e no circuito de resposta Slow (S)". É exatamente a grandeza que
+este monitor calcula, o LAeq. O limite de 45 dB(A) para Bom vem da NBR
+10152:2017, que indica cerca de 40 dB(A) como valor de projeto para escritório
+privativo e admite tolerância de até 5 dB.
+
+Nada disso é limite de insalubridade. Exposição ocupacional ao ruído é a NR-15
+Anexo 1, com 85 dB(A) para 8 horas, e exige medidor Tipo 1 ou 2 com certificado
+de calibração.
+
+**Umidade é o ponto fraco.** Não há número normativo vigente que tenha sido
+verificado em fonte oficial aberta:
+
+- a NR-17 perdeu o número de umidade na revisão de 2021 — o item 17.8.4.2 manda
+  controlar a umidade, mas não diz qual faixa;
+- a RE 09/2003 da ANVISA, que indicava 40 a 65 % no verão, foi revogada em
+  julho de 2024 pela RDC 886/2024;
+- o que a substituiu é a ABNT NBR 17037, norma paga, não consultada aqui;
+- a recomendação da OSHA (20 a 60 %) não tem caráter obrigatório nem é
+  brasileira.
+
+A faixa de 40 a 60 % é a que aparece de forma consistente nessas fontes como a
+que minimiza tanto proliferação biológica quanto irritação respiratória, mas
+ela é convergência, não norma. Se este projeto for usado para fundamentar
+alguma coisa, é aqui que falta checagem.
+
+E vale lembrar ao revisar: a umidade do DHT11 tem precisão de ±5%, então
+limites mais estreitos que isso dariam uma falsa sensação de exatidão.
 
 ## Sobre o ruído
 
@@ -346,6 +392,15 @@ define o piso de `MONITOR_INTERVALO`. A resolução é de 1 °C e 1%, então nã
 espere casas decimais.
 
 ## Adiante
+
+Duas coisas em aberto, nenhuma delas defeito:
+
+**Calibrar o nível de ruído** contra um medidor de referência, ajustando
+`MONITOR_RUIDO_OFFSET` pela diferença. Até lá o valor absoluto em dB(A) é
+indicativo e o dashboard avisa isso. Ver a seção de calibração acima.
+
+**Fechar a faixa de umidade** com fonte normativa vigente, o que hoje passa por
+consultar a ABNT NBR 17037. Ver a ressalva na seção de classificação.
 
 Acesso remoto por Tailscale, depois que o protótipo local estiver estável. O
 banco e os dados continuam no Raspberry.
