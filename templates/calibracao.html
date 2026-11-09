@@ -33,11 +33,11 @@
   <section class="estado-calibracao">
     {% if estado.calibrado %}
       <p class="frescor"><span class="pulso" aria-hidden="true"></span>
-        Calibrado com offset de {{ '%+.2f'|format(estado.offset_db) }} dB</p>
+        Calibrado com offset de {{ ('%+.2f'|format(estado.offset_db))|replace('.', ',') }} dB</p>
       {% if estado.ultima %}
         <dl class="ficha">
-          <dt>Medidor de referência mostrou</dt><dd>{{ estado.ultima.referencia_dba }} dB(A)</dd>
-          <dt>Este monitor mediu</dt><dd>{{ estado.ultima.medido_dbfs }} dBFS</dd>
+          <dt>Medidor de referência mostrou</dt><dd>{{ (estado.ultima.referencia_dba|string)|replace('.', ',') }} dB(A)</dd>
+          <dt>Este monitor mediu</dt><dd>{{ (estado.ultima.medido_dbfs|string)|replace('.', ',') }} dBFS</dd>
           <dt>Janela comparada</dt><dd>{{ estado.ultima.minutos }} min, {{ estado.ultima.janelas }} leituras</dd>
           <dt>Quando</dt><dd>{{ estado.ultima.data_hora[:16]|replace('T', ' às ') }} UTC</dd>
           {% if estado.ultima.observacao %}
@@ -47,7 +47,7 @@
       {% endif %}
     {% else %}
       <p class="frescor parado"><span class="pulso" aria-hidden="true"></span>
-        Sem calibração. O offset de {{ estado.offset_db }} dB é o valor de catálogo do
+        Sem calibração. O offset de {{ ('%.1f'|format(estado.offset_db))|replace('.', ',') }} dB é o valor de catálogo do
         microfone, não uma medição.</p>
     {% endif %}
   </section>

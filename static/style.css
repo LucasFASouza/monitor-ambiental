@@ -109,9 +109,13 @@ body {
 
 /* Sem gap de flex: os nós de texto da frase viram itens anônimos e o gap
    abre buraco antes do ponto final ("há  67 min  ."). O ponto ganha margem
-   própria e a frase segue sendo uma frase. */
+   própria e a frase segue sendo uma frase.
+
+   O padrão é o da página, não o do campo: a /calibracao reusa esta classe no
+   corpo, e tingi-la com as cores claras do teal a deixou em 1,3:1 — branco
+   sobre branco. O campo pede as claras por conta própria, logo abaixo. */
 .frescor {
-  color: var(--capa-fraco);
+  color: var(--meio);
   font-size: var(--t-apoio);
 }
 
@@ -121,12 +125,17 @@ body {
   height: var(--e2);
   margin-right: var(--e2);
   border-radius: 50%;
-  background: var(--capa-vivo);
+  background: var(--bom);
   vertical-align: baseline;
 }
 
-.frescor.parado { color: var(--capa-texto); }
-.frescor.parado .pulso { background: var(--capa-parado); }
+.frescor.parado { color: var(--ruim); }
+.frescor.parado .pulso { background: var(--ruim); }
+
+.capa .frescor { color: var(--capa-fraco); }
+.capa .frescor .pulso { background: var(--capa-vivo); }
+.capa .frescor.parado { color: var(--capa-texto); }
+.capa .frescor.parado .pulso { background: var(--capa-parado); }
 
 /* --- período: um filtro, não um campo de formulário ------------------------ */
 /* Era um <select> de 90x30px com anel de foco invisível que submetia na
