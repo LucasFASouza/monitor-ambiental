@@ -72,9 +72,10 @@ PESO = {"bom": 0, "atencao": 1, "ruim": 2}
 def _janela(grandeza: str, valores):
     """Escolhe a faixa vertical a mostrar, conforme o pior nível alcançado.
 
-    Dentro do verde, mostra verde e amarelo: a faixa vermelha ocuparia metade
-    da altura sem nada acontecer nela. Tocou no amarelo, o vermelho entra, para
-    que a distância até ele seja visível. A janela sempre contém os dados.
+    Verde e amarelo aparecem sempre. O vermelho só entra quando a série chegou
+    nele: aberto por antecipação, ocupava metade da altura sem nada acontecer
+    ali, e enquadrava igual quem só raspou o amarelo e quem entrou fundo no
+    vermelho. A janela sempre contém os dados.
     """
     bandas = _bandas(grandeza)
     bom = next(b for b in bandas if b[2] == "bom")
@@ -85,7 +86,7 @@ def _janela(grandeza: str, valores):
             if de <= v <= ate and PESO[nivel] > PESO[pior]:
                 pior = nivel
 
-    mostrar = {"bom", "atencao"} if pior == "bom" else {"bom", "atencao", "ruim"}
+    mostrar = {"bom", "atencao", "ruim"} if pior == "ruim" else {"bom", "atencao"}
 
     limites = [bom[0], bom[1]]
     for de, ate, nivel in bandas:
@@ -107,16 +108,31 @@ def _janela(grandeza: str, valores):
             ymin -= folga
         ymax += folga
 
+    # Primeiro a janela passa a conter os dados, depois o piso é calculado em
+    # cima do topo já definitivo. Na ordem inversa, uma série acima do topo das
+    # bandas dava folga negativa e o piso subia acima do próprio mínimo: a
+    # janela deixava de conter os dados e a régua colapsava numa cor só.
+    if valores:
+        margem = (ymax - ymin) * 0.04
+        ymin = min(ymin, min(valores) - margem)
+        ymax = max(ymax, max(valores) + margem)
+
     # Quando o piso da faixa boa é zero, ele é artificial: a grandeza só tem
     # teto. Mostrar de zero para cima deixaria metade do gráfico vazia, então
     # a janela começa perto do dado.
     if bom[0] <= 0 and valores:
         ymin = min(valores) - (ymax - min(valores)) * 0.12
 
-    if valores:
-        margem = (ymax - ymin) * 0.04
-        ymin = min(ymin, min(valores) - margem)
-        ymax = max(ymax, max(valores) + margem)
+    # Sem o vermelho, a janela não passa das bordas do amarelo. A margem acima
+    # existe para garantir que o dado caiba; quando a série só tocou o amarelo
+    # ela já cabe por definição, porque todo valor fora da banda de atenção é
+    # vermelho. Sem este corte a margem empurrava a janela para dentro do
+    # vermelho e a régua desenhava uma lasca da cor que a série nunca alcançou.
+    if "ruim" not in mostrar:
+        at_de, at_ate = config.LIMITES[grandeza]["atencao"]
+        ymax = min(ymax, at_ate)
+        if any(n == "atencao" and de != float("-inf") for de, ate, n in bandas):
+            ymin = max(ymin, at_de)
 
     return round(ymin, 1), round(ymax, 1)
 

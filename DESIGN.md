@@ -263,6 +263,12 @@ de tudo; e um ponto marcando a leitura atual.
 
 Eixo Y **fixo nas faixas de classificação**, nunca autoescalado nos dados.
 
+Verde e amarelo aparecem sempre; o vermelho só entra quando a série chegou
+nele. Aberto por antecipação, ele ocupava metade da altura sem nada acontecer
+ali, e enquadrava igual quem só raspou o amarelo e quem entrou fundo no
+vermelho. Sem o vermelho, a janela não passa das bordas do amarelo — qualquer
+valor fora delas já seria vermelho, então o dado cabe por definição.
+
 Dois renders por grandeza, largo e estreito, trocados por media query: o SVG
 encolhe proporcionalmente, e um desenho de 660px chega a 7px de fonte num
 celular de 375.
