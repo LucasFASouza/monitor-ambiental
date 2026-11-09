@@ -88,8 +88,16 @@
   {% if not visao.ruido_calibrado %}
     <p class="ressalva">O nível de ruído ainda não foi comparado com um medidor de referência.
       Por enquanto, confie na variação e não no número. Este monitor não substitui instrumento
-      com certificado de calibração.</p>
+      com certificado de calibração. <a href="{{ url_for('pagina_calibracao') }}">Calibrar</a>.</p>
   {% endif %}
+
+  <p class="acoes">
+    <a href="{{ url_for('exportar_csv', horas=visao.horas) }}">Baixar ar em CSV</a>
+    <a href="{{ url_for('exportar_csv', horas=visao.horas, de='ruido') }}">Baixar ruído em CSV</a>
+    {% if visao.ruido_calibrado %}
+      <a href="{{ url_for('pagina_calibracao') }}">Calibração do ruído</a>
+    {% endif %}
+  </p>
   <p>A linha é a média de cada intervalo. A sombra atrás dela mostra o mínimo e o máximo do mesmo
     intervalo, então um pico curto não some na média. A régua colorida à esquerda marca as faixas
     na escala, e a vermelha só aparece quando a medição chega perto dela.</p>

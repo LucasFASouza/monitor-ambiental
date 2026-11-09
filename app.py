@@ -8,7 +8,10 @@ Sobe em 0.0.0.0 para ficar acessível pelos outros aparelhos da rede local.
 import time
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify, render_template, request
+import csv
+import io
+
+from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 
 import avaliacao
 import config
@@ -260,6 +263,107 @@ def api_calibracao_gravar():
                     f"janelas dos últimos {minutos} min. Todo o histórico "
                     "passa a ser lido com este offset.",
     })
+
+
+@app.get("/exportar.csv")
+def exportar_csv():
+    """Baixa o histórico do período como CSV.
+
+    Ar e ruído têm cadências diferentes — uma leitura por minuto contra uma
+    janela de LAeq por minuto — então saem em arquivos separados em vez de
+    serem forçados numa tabela só com buracos.
+    """
+    horas = _inteiro("horas", padrao=24, minimo=1, maximo=24 * 365)
+    qual = request.args.get("de", "ar")
+
+    ate = int(time.time())
+    desde = ate - horas * 3600
+    offset = database.offset_ruido()
+
+    saida = io.StringIO()
+    escritor = csv.writer(saida)
+
+    if qual == "ruido":
+        escritor.writerow([
+            "data_hora_local", "data_hora_utc", "laeq_dba", "lamax_dba",
+            "lamin_dba", "laeq_dbfs_cru", "offset_db",
+        ])
+        with database.conectar() as conexao:
+            linhas = conexao.execute(
+                "SELECT ts, laeq_dbfs, lamax_dbfs, lamin_dbfs FROM leituras_ruido"
+                " WHERE ts BETWEEN ? AND ? ORDER BY ts",
+                (desde, ate),
+            ).fetchall()
+
+        for linha in linhas:
+            escritor.writerow([
+                datetime.fromtimestamp(linha["ts"]).strftime("%Y-%m-%d %H:%M:%S"),
+                _iso(linha["ts"]),
+                round(linha["laeq_dbfs"] + offset, 1),
+                round(linha["lamax_dbfs"] + offset, 1),
+                round(linha["lamin_dbfs"] + offset, 1),
+                # O valor cru vai junto: com ele, quem recalibrar depois
+                # consegue reinterpretar esta exportação sem repetir a medição.
+                round(linha["laeq_dbfs"], 2),
+                offset,
+            ])
+        nome = f"ruido-{horas}h.csv"
+    else:
+        escritor.writerow([
+            "data_hora_local", "data_hora_utc", "temperatura_c", "umidade_pct",
+        ])
+        with database.conectar() as conexao:
+            linhas = conexao.execute(
+                "SELECT ts, temperatura, umidade FROM leituras"
+                " WHERE ts BETWEEN ? AND ? ORDER BY ts",
+                (desde, ate),
+            ).fetchall()
+
+        for linha in linhas:
+            escritor.writerow([
+                datetime.fromtimestamp(linha["ts"]).strftime("%Y-%m-%d %H:%M:%S"),
+                _iso(linha["ts"]),
+                linha["temperatura"],
+                linha["umidade"],
+            ])
+        nome = f"ar-{horas}h.csv"
+
+    return Response(
+        saida.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
+
+@app.get("/calibracao")
+def pagina_calibracao():
+    return render_template("calibracao.html", estado=api_calibracao_ler().get_json())
+
+
+@app.post("/calibracao")
+def pagina_calibracao_gravar():
+    """Mesma lógica da API, respondendo em página para quem não usa JavaScript."""
+    corpo = {
+        "referencia_dba": request.form.get("referencia_dba"),
+        "minutos": request.form.get("minutos"),
+        "observacao": request.form.get("observacao"),
+    }
+
+    with app.test_request_context("/api/calibracao", json=corpo):
+        resposta = api_calibracao_gravar()
+
+    dados = resposta[0].get_json() if isinstance(resposta, tuple) else resposta.get_json()
+    codigo = resposta[1] if isinstance(resposta, tuple) else 200
+
+    if codigo == 200:
+        return redirect(url_for("pagina_calibracao", ok=1))
+
+    return render_template(
+        "calibracao.html",
+        estado=api_calibracao_ler().get_json(),
+        erro=dados.get("mensagem"),
+        enviado=corpo,
+    ), codigo
 
 
 @app.get("/api/limites")
