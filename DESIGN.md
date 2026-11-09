@@ -304,6 +304,15 @@ vigente diz que não tem.
 **Faça** o monitor relatar o que não sabe: leitura perdida, buraco no
 histórico, nível não calibrado.
 
+**Faça** o gráfico ter alternativa em texto: quantas leituras, em que período,
+menor e maior valor. O canvas anuncia como imagem, e sem isso o histórico — que
+é o produto — fica inaudível para quem usa leitor de tela e invisível para quem
+está sem JavaScript.
+
+**Não** recarregue o documento para atualizar número. Trocar o conteúdo
+descarta o scroll, reanuncia a página inteira por voz e fecha o que estiver
+aberto. Atualize os dados no lugar, com os textos vindos prontos do servidor.
+
 **Faça** a leitura velha ser degradada, nunca pintada como atual: glifo cinza,
 valor apagado, a frase de condição trocada pela idade, e sem cor de estado —
 ela descreveria um agora que o aparelho não conhece. Cada grandeza tem a

@@ -46,6 +46,33 @@ def pagina():
     return render_template("index.html", visao=painel.montar(_inteiro("horas", 24, 1, 24 * 90)))
 
 
+@app.get("/api/painel")
+def api_painel():
+    """O mesmo view model da página, para atualizá-la sem recarregar.
+
+    O recarregamento de página a cada minuto descartava o scroll, reanunciava o
+    documento inteiro para leitor de tela e fechava qualquer painel de
+    informação aberto. Aqui vem só o que muda, com os textos já resolvidos no
+    servidor para não duplicar português no cliente.
+    """
+    visao = painel.montar(_inteiro("horas", 24, 1, 24 * 90))
+
+    campos = ("chave", "valor", "unidade", "nivel", "atualizado", "idade",
+              "estado_texto", "estado_classe", "marca_classe", "valor_classe",
+              "resumo_serie")
+
+    return jsonify({
+        "resumo": visao["resumo"],
+        "geral": visao["geral"],
+        "idade": visao["idade"],
+        "idade_segundos": visao["idade_segundos"],
+        "atualizado": visao["atualizado"],
+        "ruido_calibrado": visao["ruido_calibrado"],
+        "blocos": [{c: b[c] for c in campos} for b in visao["blocos"]],
+        "graficos": {b["chave"]: b["grafico"] for b in visao["blocos"]},
+    })
+
+
 def _bloco_ruido() -> dict | None:
     """Última medição de ruído, ou None se o coletor nunca rodou."""
     leitura = database.ultima_leitura_ruido()

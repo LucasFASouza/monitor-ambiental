@@ -134,6 +134,12 @@ body {
   vertical-align: baseline;
 }
 
+/* Só uma das duas frases aparece; a outra fica fora da árvore de
+   acessibilidade, que é o que display:none faz. */
+.frescor .quando-parado { display: none; }
+.frescor.parado .quando-vivo { display: none; }
+.frescor.parado .quando-parado { display: inline; }
+
 .frescor.parado { color: var(--ruim); }
 .frescor.parado .pulso { background: var(--ruim); }
 
@@ -214,6 +220,10 @@ main {
   line-height: 1.5;
 }
 
+/* Precisa vencer o `display: block` do celular, por isso o atributo entra no
+   seletor: [hidden] sozinho tem especificidade menor. */
+.resumo[hidden] { display: none; }
+
 .resumo.n-bom { color: var(--bom); }
 .resumo.n-atencao { color: var(--atencao); }
 .resumo.n-ruim { color: var(--ruim); }
@@ -255,6 +265,29 @@ main {
 .marca.m-sem { color: var(--fraco); }
 
 .simbolos { display: none; }
+
+/* Fora da tela, dentro da árvore de acessibilidade. `display: none` tiraria o
+   texto do leitor de tela junto, que é exatamente quem precisa dele. */
+.so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Sem JavaScript o canvas fica vazio: a faixa reservada ao gráfico recebe o
+   resumo em texto, no lugar de um buraco de 188px. */
+.sem-script {
+  max-width: var(--medida);
+  padding: var(--e4) 0;
+  color: var(--meio);
+  font-size: var(--t-apoio);
+  line-height: 1.6;
+}
 
 .leitura h2 {
   font-size: var(--t-grandeza);

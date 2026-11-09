@@ -9,6 +9,9 @@
 (() => {
   "use strict";
 
+  /* Mutável de propósito: a página se atualiza sem recarregar, e os callbacks
+     da dica do mouse leem daqui. Fechados sobre o objeto da carga, mostrariam
+     para sempre os valores da primeira renderização. */
   const DADOS = JSON.parse(document.getElementById("dados").textContent);
   const estilo = getComputedStyle(document.documentElement);
   const cor = (n) => estilo.getPropertyValue(n).trim();
@@ -106,7 +109,7 @@
     const minimos = d.pontos.map((p) => p.n);
     const maximos = d.pontos.map((p) => p.x);
 
-    return telas.forEach((tela) => new Chart(tela, {
+    return [...telas].map((tela) => new Chart(tela, {
       type: "line",
       data: {
         labels: d.rotulos,
@@ -150,9 +153,11 @@
             filter: (item) => item.datasetIndex === 2,
             callbacks: {
               label: (item) => {
-                const p = d.pontos[item.dataIndex];
+                const atual = DADOS[chave];
+                const p = atual.pontos[item.dataIndex];
+                if (!p) return "";
                 return [
-                  `${p.m} ${d.unidade}`,
+                  `${p.m} ${atual.unidade}`,
                   `variou de ${p.n} a ${p.x} no intervalo`,
                 ];
               },
@@ -183,7 +188,10 @@
     }));
   }
 
-  for (const [chave, d] of Object.entries(DADOS)) desenhar(chave, d);
+  const graficos = {};
+  for (const [chave, d] of Object.entries(DADOS)) {
+    graficos[chave] = desenhar(chave, d) || [];
+  }
 
   /* As divulgações fecham com Esc e clicando fora: é o que separa um painel
      flutuante de uma sanfona. Sem este bloco o <details> continua abrindo e
@@ -205,24 +213,108 @@
   // --- o que depende do tempo passar ---------------------------------------
 
   const intervalo = Number(document.body.dataset.intervalo) || 60;
-  const idade = document.getElementById("idade");
 
-  if (idade) {
-    let segundos = Number((idade.textContent.match(/\d+/) || [0])[0]);
-    const unidade = idade.textContent.trim().split(/\s+/)[1] || "s";
-    if (unidade === "min") segundos *= 60;
-    else if (unidade === "h") segundos *= 3600;
+  /* A duração conta no cliente, de segundo em segundo, e é corrigida a cada
+     atualização com a idade que o servidor informa. */
+  let segundos = 0;
 
-    // Só a duração: a frase em volta vem do template, que sabe se a coleta
-    // está viva ou parada. Escrever a frase inteira aqui duplicava palavra.
-    const descrever = (s) =>
-      s < 90 ? `${s} s` : s < 5400 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
+  const descrever = (s) =>
+    s < 90 ? `${s} s` : s < 5400 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
 
-    setInterval(() => { idade.textContent = descrever(++segundos); }, 1000);
+  const escreverDuracao = () => {
+    for (const el of document.querySelectorAll(".idade")) el.textContent = descrever(segundos);
+  };
+
+  const lerDuracaoInicial = () => {
+    const el = document.querySelector(".idade");
+    if (!el) return;
+    const n = Number((el.textContent.match(/\d+/) || [0])[0]);
+    const unidade = el.textContent.trim().split(/\s+/)[1] || "s";
+    segundos = unidade === "min" ? n * 60 : unidade === "h" ? n * 3600 : n;
+  };
+
+  lerDuracaoInicial();
+  setInterval(() => { segundos += 1; escreverDuracao(); }, 1000);
+
+  /* Atualiza os dados, não o documento.
+
+     `location.replace` a cada minuto descartava o scroll — a navegação não é
+     do tipo "reload", então o navegador não o restaura —, reanunciava a página
+     inteira para leitor de tela e fechava qualquer painel de informação
+     aberto. Ler o rodapé era impossível e a leitura por voz recomeçava do topo
+     uma vez por minuto, indefinidamente. */
+  async function atualizar() {
+    let v;
+    try {
+      const resposta = await fetch(`/api/painel${window.location.search}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!resposta.ok) return;
+      v = await resposta.json();
+    } catch {
+      return; // rede caiu: mantém o que está na tela, que é honesto
+    }
+
+    const resumo = document.querySelector(".resumo");
+    if (resumo) {
+      resumo.textContent = v.resumo || "";
+      resumo.className = `resumo n-${v.geral || "sem"}`;
+      resumo.hidden = !v.resumo;
+    }
+
+    const frescor = document.querySelector(".frescor");
+    if (frescor) frescor.classList.toggle("parado", !v.atualizado);
+    if (v.idade_segundos !== null && v.idade_segundos !== undefined) {
+      segundos = v.idade_segundos;
+      escreverDuracao();
+    }
+
+    for (const b of v.blocos) {
+      const leitura = document.querySelector(`.leitura[data-bloco="${b.chave}"]`);
+      if (!leitura) continue;
+
+      leitura.querySelector(".marca")?.setAttribute("class", `marca ${b.marca_classe}`);
+
+      const estado = leitura.querySelector(".estado");
+      if (estado) {
+        estado.textContent = b.estado_texto;
+        estado.className = `estado ${b.estado_classe}`;
+      }
+
+      const valor = leitura.querySelector(".valor");
+      if (valor) {
+        valor.querySelector(".numero").textContent = b.valor ?? "";
+        valor.className = `valor ${b.valor_classe}`;
+        valor.hidden = b.valor === null;
+      }
+
+      const descricao = document.getElementById(`serie-${b.chave}`);
+      if (descricao) descricao.textContent = b.resumo_serie;
+    }
+
+    for (const [chave, d] of Object.entries(v.graficos)) {
+      DADOS[chave] = d;
+
+      for (const gr of graficos[chave] || []) {
+        gr.data.labels = d.rotulos;
+        gr.data.datasets[0].data = d.pontos.map((p) => p.x);
+        gr.data.datasets[1].data = d.pontos.map((p) => p.n);
+        gr.data.datasets[2].data = d.pontos.map((p) => p.m);
+        gr.options.scales.y.min = d.ymin;
+        gr.options.scales.y.max = d.ymax;
+        gr.options.scales.y.ticks.stepSize = d.passo;
+        gr.options.plugins.faixas.lista = d.faixas;
+        gr.options.plugins.limites.lista = d.reguas;
+        // A calha acompanha o rótulo mais largo: quando a faixa vermelha entra,
+        // aparecem limites novos e eles podem medir mais.
+        gr.options.layout.padding.right = Math.max(
+          18,
+          ...d.reguas.map((r) => larguraDoRotulo(r.rotulo) + 18),
+        );
+        gr.update("none");
+      }
+    }
   }
 
-  setInterval(
-    () => window.location.replace(window.location.pathname + window.location.search),
-    Math.min(Math.max(intervalo, 15), 60) * 1000,
-  );
+  setInterval(atualizar, Math.min(Math.max(intervalo, 15), 60) * 1000);
 })();

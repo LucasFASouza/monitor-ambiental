@@ -347,6 +347,64 @@ def resumo_geral(blocos: list[dict]) -> str | None:
     return frase
 
 
+def _apresentacao(valor, nivel, frase, fresco: bool, idade) -> dict:
+    """Texto e classes do bloco de leitura, nos três estados possíveis."""
+    if valor is None:
+        return {
+            "estado_texto": "Sem leitura",
+            "estado_classe": "",
+            "marca_classe": "m-sem",
+            "valor_classe": "",
+        }
+
+    if not fresco:
+        return {
+            "estado_texto": f"Sem leitura há {duracao(idade)}",
+            "estado_classe": "parada",
+            "marca_classe": "m-sem",
+            "valor_classe": "velho",
+        }
+
+    return {
+        "estado_texto": frase[:1].upper() + frase[1:],
+        "estado_classe": f"e-{nivel}",
+        "marca_classe": f"m-{nivel}",
+        "valor_classe": "",
+    }
+
+
+def _ultimas(rotulo: str) -> str:
+    """Artigo concordando com a unidade do período: horas é feminino, dias não."""
+    return "nas últimas" if rotulo.rstrip().endswith(("hora", "horas", "h")) else "nos últimos"
+
+
+def _resumo_da_serie(valores: list[float], periodo: str, d: dict) -> str:
+    """O que o gráfico mostra, em texto.
+
+    Sem média: para ruído a média aritmética de decibéis mente, e dizer um
+    número errado é pior que não dizer. Extremos e contagem bastam para saber
+    se vale olhar o desenho.
+
+    O período chega pronto, com o artigo já concordando. Vem do rótulo do
+    filtro e não das marcas do eixo: em 24 horas a primeira e a última caem na
+    mesma hora do relógio, e "de 18h27 a 18h27" não informa nada.
+    """
+    if not valores:
+        return f"Sem leituras {periodo}."
+
+    casas = d["casas"]
+    menor = f"{min(valores):.{casas}f}".replace(".", ",")
+    maior = f"{max(valores):.{casas}f}".replace(".", ",")
+
+    quantas = len(valores)
+    plural = "leitura" if quantas == 1 else "leituras"
+
+    return (
+        f"{quantas} {plural} {periodo}. "
+        f"Menor valor {menor} {d['unidade']}, maior {maior} {d['unidade']}."
+    )
+
+
 def _reguas_visiveis(grandeza: str, d: dict, ymin: float, ymax: float) -> list[dict]:
     """As linhas de referência que cabem na janela, com valor e unidade.
 
@@ -425,6 +483,14 @@ def montar(horas: int = 24) -> dict:
         "ruido": [linha["laeq"] for linha in serie_ruido],
     }
 
+    # O rótulo do filtro quando o período é um dos oferecidos; a duração por
+    # extenso quando alguém pede ?horas=N arbitrário. Com o artigo concordando:
+    # "nas últimas 24 horas", mas "nos últimos 7 dias".
+    rotulo_do_periodo = next(
+        (r.lower() for h, r in PERIODOS if h == horas), duracao(horas * 3600)
+    )
+    periodo_por_extenso = f"{_ultimas(rotulo_do_periodo)} {rotulo_do_periodo}"
+
     blocos = []
     niveis = []
 
@@ -448,6 +514,10 @@ def montar(horas: int = 24) -> dict:
 
         blocos.append({
             "chave": chave,
+            # Alternativa de texto do gráfico. O canvas anunciava como imagem
+            # com rótulo e nada mais: para quem usa leitor de tela, o histórico
+            # — que é o produto — era inaudível.
+            "resumo_serie": _resumo_da_serie(series[chave], periodo_por_extenso, d),
             "nome": d["nome"],
             "curto": d["curto"],
             "artigo": d["artigo"],
@@ -476,6 +546,11 @@ def montar(horas: int = 24) -> dict:
             "valor": None if valor is None else f"{valor:.{d['casas']}f}".replace(".", ","),
             "nivel": nivel,
             "frase": frase,
+            # Apresentação resolvida aqui, não no template: a página também é
+            # atualizada por JavaScript sem recarregar, e deixar a escolha de
+            # texto e de classe em dois lugares é como nasce "Última leitura
+            # leitura de 10 min atrás".
+            **_apresentacao(valor, nivel, frase, fresco, idade_do_bloco),
         })
 
     saude = database.saude_da_coleta(
