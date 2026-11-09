@@ -5,7 +5,7 @@ histórico em SQLite e um dashboard web acessível pela rede local.
 
 ```text
 DHT11    ┐
-         ├→ Raspberry Pi → SQLite → Flask → SVG → dashboard
+         ├→ Raspberry Pi → SQLite → Flask → navegador
 INMP441  ┘
 ```
 
@@ -23,7 +23,8 @@ INMP441  ┘
 | `painel.py` | Monta a visão da página: o que cada grandeza mostra e como se lê |
 | `avaliacao.py` | Classificação em Bom, Atenção e Ruim |
 | `teste_dht.py` | Teste isolado do sensor, sem banco e sem Flask |
-| `deploy/` | Units de systemd para o coletor e o dashboard |
+| `templates/` | As três páginas: painel, sistema e calibração |
+| `deploy/` | Units de systemd para os dois coletores e o dashboard |
 | `scripts/` | Semear histórico simulado para trabalhar sem o Raspberry |
 
 São três processos independentes: o coletor de ar, o coletor de ruído e o
@@ -194,7 +195,9 @@ Tudo tem padrão razoável; sobrescreva por variável de ambiente quando precisa
 | `MONITOR_RUIDO_DISPOSITIVO` | `plughw:CARD=sndrpigooglevoi,DEV=0` | Dispositivo ALSA do microfone |
 | `MONITOR_RUIDO_CANAL` | `0` | Canal com microfone: 0 esquerdo, 1 direito |
 | `MONITOR_RUIDO_JANELA` | `60` | Segundos de áudio por LAeq gravado |
-| `MONITOR_RUIDO_OFFSET` | `120.0` | Offset de calibração, em dB |
+O offset de calibração do ruído **não é variável de ambiente**: vive no banco,
+na tabela `configuracao`, e é gravado pela página de calibração. Ver a seção de
+calibração adiante.
 
 O padrão de `MONITOR_SENSOR` é o sensor real de propósito. Se o driver não
 estiver carregado no Pi, queremos um erro visível, não dados simulados
@@ -216,8 +219,24 @@ As três implementações:
 | `GET /api/history?horas=24&pontos=500` | Série de ar do período, reduzida a no máximo `pontos` |
 | `GET /api/ruido/history?horas=24&pontos=500` | Série de ruído, com LAeq, máximo e mínimo |
 | `GET /api/limites` | Os limites de classificação em uso |
+| `GET /api/painel` | Todo o view model da página, para atualizar sem recarregar |
+| `GET /api/calibracao` | Estado da calibração do ruído |
+| `POST /api/calibracao` | Grava uma calibração; recusa janela insuficiente com 409 |
+| `GET /exportar.csv?horas=24` | Ar e ruído no mesmo arquivo, uma linha por minuto |
+
+E três páginas:
+
+| Rota | Função |
+| --- | --- |
+| `GET /` | Painel: condição, valor e histórico das três grandezas |
+| `GET /sistema` | Saúde da coleta, calibração, limites do aparelho e exportação |
+| `GET /calibracao` | Ancorar o dB(A) num medidor de referência |
 
 As datas saem em ISO 8601 UTC; o navegador converte para a hora local.
+
+O painel se atualiza buscando `/api/painel`, não recarregando o documento:
+recarregar descartava o scroll, reanunciava a página inteira para leitor de tela
+e fechava qualquer painel de informação aberto.
 
 `/api/history` agrupa por faixa de tempo e tira a média de cada faixa. Coletando
 de minuto em minuto, uma semana daria mais de dez mil pontos — peso à toa para
@@ -345,10 +364,13 @@ plotagem. Preenchimento tinge tudo e mata a leitura da série.
 anotação. Rótulo dentro da área colide com a série, e vermelho ali mente,
 porque 18 e 25 °C são os limites do que é bom.
 
-Há dois renders por grandeza, um para tela larga e um estreito para celular. O
-SVG encolhe proporcionalmente, então um desenho feito para 660 px de largura
-chega a 7 px de fonte num celular de 375 — ilegível justamente onde a leitura
-precisa funcionar.
+O eixo Y não imprime valor nenhum: a escala é dada pela régua de faixas e pelos
+rótulos das linhas de referência, cada um com a sua unidade. A coluna de números
+repetia a unidade a cada marca e afastava a régua da curva que ela qualifica.
+
+As linhas do vermelho — 16 e 28 °C, 30 e 70 % — só aparecem quando a faixa
+vermelha está em vista. Fora disso elas coincidem com os limites da janela e
+seriam desenhadas em cima da moldura.
 
 ## Sobre o ruído
 
@@ -393,14 +415,24 @@ A implementação é conferida contra a tabela da IEC 61672-1 de 31,5 Hz a 16 kH
 ### Calibração
 
 **O valor absoluto não vale nada até ser calibrado.** O nível medido é em dBFS,
-relativo ao fundo de escala digital; virar dB SPL exige somar um offset. O
-padrão de `MONITOR_RUIDO_OFFSET` sai da sensibilidade de catálogo do INMP441
-(-26 dBFS para 94 dB SPL, ou seja, 120), mas cada módulo varia.
+relativo ao fundo de escala digital; virar dB SPL exige somar um offset. O valor
+inicial, 120, sai da sensibilidade de catálogo do INMP441 (-26 dBFS para
+94 dB SPL), mas cada módulo varia — e catálogo não é medição.
 
-Para calibrar de verdade é preciso comparar com um medidor de referência no
-mesmo ambiente e ajustar o offset pela diferença. Enquanto isso não for feito, o
-dashboard exibe um aviso e o campo `calibrado` da API vem `false`. A variação
-relativa, essa é confiável desde o primeiro minuto.
+A calibração é feita pela página `/calibracao`: deixa-se um medidor de
+referência no mesmo ponto por alguns minutos e informa-se o LAeq que ele
+acumulou e por quanto tempo. A comparação é sobre a **mesma janela de tempo**,
+nunca sobre um instante, porque o ruído flutua a cada segundo e comparar duas
+leituras pontuais é comparar ruído com ruído. Sem leituras suficientes no
+período, a gravação é recusada em vez de produzir um offset instável.
+
+**O banco guarda o nível cru, em dBFS.** Recalibrar reinterpreta todo o
+histórico sem reescrever nada. Sem isso, cada calibração criaria um degrau
+invisível no gráfico, com o passado numa escala e o futuro em outra.
+
+Enquanto não houver calibração, o dashboard avisa na seção de ruído e o campo
+`calibrado` da API vem `false`. A variação relativa, essa é confiável desde o
+primeiro minuto.
 
 E vale repetir: **isto não é um decibelímetro**. A NR-15 Anexo 1, para ruído
 ocupacional, e a NBR 10151, para ruído em comunidades, exigem instrumento Tipo 1
@@ -438,18 +470,31 @@ espere casas decimais.
 
 ## Adiante
 
-Duas coisas em aberto, nenhuma delas defeito:
-
-**Calibrar o nível de ruído** contra um medidor de referência, ajustando
-`MONITOR_RUIDO_OFFSET` pela diferença. Até lá o valor absoluto em dB(A) é
-indicativo e o dashboard avisa isso. Ver a seção de calibração acima.
+**Calibrar o nível de ruído** contra um medidor de referência, pela página
+`/calibracao`. Até lá o valor absoluto em dB(A) é indicativo e o dashboard avisa
+isso em todas as telas.
 
 **Fechar a faixa de umidade** com fonte normativa vigente, o que hoje passa por
-consultar a ABNT NBR 17037. Ver a ressalva na seção de classificação.
+consultar a ABNT NBR 17037, que é paga. Ver a ressalva na seção de
+classificação.
 
-Acesso remoto por Tailscale, depois que o protótipo local estiver estável. O
-banco e os dados continuam no Raspberry.
+**Três análises de histórico** que respondem a segunda pergunta do produto, "há
+quanto tempo está assim?": tempo de exposição por faixa, resumo diário de
+mínimo, máximo e média, e registro de excursões — quando saiu da faixa e por
+quanto tempo.
+
+**Acesso só pela rede local**, por decisão de segurança e escopo. A página não
+tem autenticação e as rotas de calibração alteram como todo o histórico de ruído
+é lido, então expor para fora exigiria controle de acesso antes. Quem precisar
+olhar de outra rede, o caminho seria um túnel (Tailscale ou Cloudflare), não
+redirecionamento de porta.
 
 O `app.py` sobe o servidor de desenvolvimento do Flask, o que é adequado para um
 protótipo na rede local. Se o dashboard virar algo permanente, trocar por
 `waitress` é uma linha.
+
+## Para a parte teórica e a apresentação
+
+Ver [HANDOFF_teoria_e_apresentacao.md](HANDOFF_teoria_e_apresentacao.md):
+resumo do que foi feito, decisões com a razão de cada uma, o fluxo de páginas e
+as referências normativas prontas para citar.
