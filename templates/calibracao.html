@@ -8,14 +8,30 @@
 </head>
 <body>
 
+<svg class="simbolos" aria-hidden="true">
+  <symbol id="i-voltar" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.5 6 8.5 12l6 6"/>
+  </symbol>
+</svg>
+
 <header class="capa">
   <div class="capa-campo unico">
-    <h1><a href="{{ url_for('pagina') }}">Monitor ambiental</a></h1>
+    <div class="capa-topo">
+      <h1><a href="{{ url_for('pagina') }}">Monitor ambiental</a></h1>
+      <a class="voltar" href="{{ url_for('pagina') }}">
+        <svg aria-hidden="true"><use href="#i-voltar"></use></svg>
+        Voltar ao painel
+      </a>
+    </div>
   </div>
 </header>
 
 <main class="conteudo">
   <h2 class="titulo-pagina">Calibrar o nível de ruído</h2>
+  <p class="lede">O microfone mede em dBFS, uma escala relativa ao próprio circuito. Para
+    virar dB(A) ele precisa ser comparado uma vez com um medidor de referência. Enquanto
+    isso não acontece, a variação do gráfico é confiável mas o número não.</p>
 
   {% if request.args.get('ok') %}
     <p class="recado ok">Calibração gravada. Todo o histórico passa a ser lido com o
@@ -26,81 +42,103 @@
     <p class="recado erro">{{ erro }}</p>
   {% endif %}
 
-  <p class="explicacao larga">O microfone mede em dBFS, uma escala relativa ao próprio
-    circuito. Para virar dB(A) ele precisa ser comparado com um medidor de referência.
-    Enquanto isso não acontece, a variação do gráfico é confiável mas o número não.</p>
-
-  <section class="estado-calibracao">
-    {% if estado.calibrado %}
-      <p class="frescor"><span class="pulso" aria-hidden="true"></span>
-        Calibrado com offset de {{ ('%+.2f'|format(estado.offset_db))|replace('.', ',') }} dB</p>
-      {% if estado.ultima %}
-        <dl class="ficha">
-          <dt>Medidor de referência mostrou</dt><dd>{{ (estado.ultima.referencia_dba|string)|replace('.', ',') }} dB(A)</dd>
-          <dt>Este monitor mediu</dt><dd>{{ (estado.ultima.medido_dbfs|string)|replace('.', ',') }} dBFS</dd>
-          <dt>Janela comparada</dt><dd>{{ estado.ultima.minutos }} min, {{ estado.ultima.janelas }} leituras</dd>
-          <dt>Quando</dt><dd>{{ estado.ultima.data_hora[:16]|replace('T', ' às ') }} UTC</dd>
-          {% if estado.ultima.observacao %}
-            <dt>Observação</dt><dd>{{ estado.ultima.observacao }}</dd>
-          {% endif %}
-        </dl>
+  <section class="secao">
+    <div>
+      <h3>Estado atual</h3>
+      <p class="secao-resumo">De onde sai o número que o painel mostra hoje.</p>
+    </div>
+    <div class="secao-corpo">
+      {% if estado.calibrado %}
+        <p class="frescor"><span class="pulso" aria-hidden="true"></span>
+          Calibrado com offset de {{ ('%+.2f'|format(estado.offset_db))|replace('.', ',') }} dB.</p>
+        {% if estado.ultima %}
+          <dl class="ficha">
+            <dt>Medidor de referência mostrou</dt>
+            <dd>{{ (estado.ultima.referencia_dba|string)|replace('.', ',') }} dB(A)</dd>
+            <dt>Este monitor mediu</dt>
+            <dd>{{ (estado.ultima.medido_dbfs|string)|replace('.', ',') }} dBFS</dd>
+            <dt>Janela comparada</dt>
+            <dd>{{ estado.ultima.minutos }} min, {{ estado.ultima.janelas }} leituras</dd>
+            <dt>Quando</dt>
+            <dd>{{ estado.ultima.data_hora[:16]|replace('T', ' às ') }} UTC</dd>
+            {% if estado.ultima.observacao %}
+              <dt>Instrumento</dt><dd>{{ estado.ultima.observacao }}</dd>
+            {% endif %}
+          </dl>
+        {% endif %}
+      {% else %}
+        <p class="frescor parado"><span class="pulso" aria-hidden="true"></span>
+          Sem calibração. O offset de {{ ('%.1f'|format(estado.offset_db))|replace('.', ',') }} dB
+          é o valor de catálogo do microfone, não uma medição.</p>
       {% endif %}
-    {% else %}
-      <p class="frescor parado"><span class="pulso" aria-hidden="true"></span>
-        Sem calibração. O offset de {{ ('%.1f'|format(estado.offset_db))|replace('.', ',') }} dB é o valor de catálogo do
-        microfone, não uma medição.</p>
-    {% endif %}
+    </div>
   </section>
 
-  <h3>Como fazer</h3>
-  <ol class="passos">
-    <li>Deixe um medidor de referência ao lado do Raspberry, no mesmo ponto, medindo
-      LAeq.</li>
-    <li>Espere pelo menos alguns minutos sem mexer no ambiente. Quanto mais tempo,
-      mais estável fica a comparação.</li>
-    <li>Preencha abaixo o LAeq que o medidor acumulou nesse período e por quantos
-      minutos ele ficou lá.</li>
-  </ol>
-
-  <form class="formulario" method="post">
-    <div class="campo">
-      <label for="referencia_dba">LAeq do medidor de referência</label>
-      <div class="com-unidade">
-        <input id="referencia_dba" name="referencia_dba" type="number" step="0.1"
-               min="20" max="130" required inputmode="decimal"
-               value="{{ (enviado.referencia_dba if enviado else '') or '' }}">
-        <span>dB(A)</span>
-      </div>
+  <section class="secao">
+    <div>
+      <h3>Como fazer</h3>
+      <p class="secao-resumo">Três passos, e um medidor de referência emprestado por alguns
+        minutos.</p>
     </div>
-
-    <div class="campo">
-      <label for="minutos">Por quantos minutos ele ficou medindo</label>
-      <div class="com-unidade">
-        <input id="minutos" name="minutos" type="number" step="1" min="1" max="120"
-               required inputmode="numeric"
-               value="{{ (enviado.minutos if enviado else '') or 10 }}">
-        <span>min</span>
-      </div>
+    <div class="secao-corpo">
+      <ol class="passos">
+        <li>Deixe um medidor de referência ao lado do Raspberry, no mesmo ponto, medindo
+          LAeq.</li>
+        <li>Espere pelo menos alguns minutos sem mexer no ambiente. Quanto mais tempo, mais
+          estável fica a comparação.</li>
+        <li>Registre o LAeq que o medidor acumulou nesse período e por quantos minutos
+          ele ficou lá.</li>
+      </ol>
+      <p>A comparação é feita sobre a <b>mesma janela de tempo</b>, nunca sobre um instante:
+        o nível de ruído flutua a cada segundo, e comparar duas leituras pontuais compara
+        ruído com ruído. Se não houver leituras suficientes no período informado, a gravação
+        é recusada em vez de produzir um offset instável.</p>
     </div>
+  </section>
 
-    <div class="campo">
-      <label for="observacao">Qual medidor foi usado <span class="opcional">(opcional, mas vale registrar)</span></label>
-      <input id="observacao" name="observacao" type="text" maxlength="200"
-             placeholder="Instrutherm DEC-460, certificado de 03/2026"
-             value="{{ (enviado.observacao if enviado else '') or '' }}">
+  <section class="secao">
+    <div>
+      <h3>Registrar a medição</h3>
+      <p class="secao-resumo">O offset gravado passa a valer para todo o histórico, não só
+        para as leituras seguintes.</p>
     </div>
+    <div class="secao-corpo">
+      <form class="formulario" method="post">
+        <div class="campo">
+          <label for="referencia_dba">LAeq do medidor de referência</label>
+          <div class="com-unidade">
+            <input id="referencia_dba" name="referencia_dba" type="number" step="0.1"
+                   min="20" max="130" required inputmode="decimal"
+                   value="{{ (enviado.referencia_dba if enviado else '') or '' }}">
+            <span>dB(A)</span>
+          </div>
+        </div>
 
-    <button type="submit">Gravar calibração</button>
-  </form>
+        <div class="campo">
+          <label for="minutos">Por quantos minutos ele ficou medindo</label>
+          <div class="com-unidade">
+            <input id="minutos" name="minutos" type="number" step="1" min="1" max="120"
+                   required inputmode="numeric"
+                   value="{{ (enviado.minutos if enviado else '') or 10 }}">
+            <span>min</span>
+          </div>
+        </div>
 
-  <p class="explicacao larga">A comparação é feita sobre a <b>mesma janela de tempo</b>,
-    nunca sobre um instante: o nível de ruído flutua a cada segundo, e comparar duas
-    leituras pontuais compara ruído com ruído. Se não houver leituras suficientes no
-    período informado, a gravação é recusada em vez de produzir um offset instável.</p>
+        <div class="campo">
+          <label for="observacao">Qual medidor foi usado
+            <span class="opcional">(opcional, mas vale registrar)</span></label>
+          <input id="observacao" name="observacao" type="text" maxlength="200"
+                 placeholder="Instrutherm DEC-460, certificado de 03/2026"
+                 value="{{ (enviado.observacao if enviado else '') or '' }}">
+        </div>
 
-  <p class="explicacao larga">Calibrar aqui não transforma o aparelho em instrumento de
-    higiene ocupacional. Avaliação de insalubridade exige medidor com certificado de
-    calibração rastreável, e este monitor não substitui isso.</p>
+        <button type="submit">Gravar calibração</button>
+      </form>
+      <p>Calibrar aqui não transforma o aparelho em instrumento de higiene ocupacional.
+        Avaliação de insalubridade exige medidor com certificado de calibração rastreável, e
+        este monitor não substitui isso.</p>
+    </div>
+  </section>
 </main>
 
 </body>

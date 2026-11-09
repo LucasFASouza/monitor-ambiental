@@ -391,28 +391,116 @@ footer {
   .curva { height: 180px; }
 }
 
-/* --- página de calibração -------------------------------------------------- */
+/* --- subpáginas: a mesma gramática do painel ------------------------------ */
+/* A /sistema e a /calibracao empilhavam tudo numa margem só, sem uma divisória
+   entre quatro seções, com 537px de prosa dentro de uma coluna de 945 e a
+   lista de instruções como o bloco mais indentado da página. Liam como outro
+   produto. Agora usam a faixa de duas colunas da .grandeza: título e resumo à
+   esquerda, conteúdo à direita, régua de um pixel entre seções. */
 
-/* O título de uma subpágina é o degrau mais alto dela. Em 1,25rem ele ficava a
-   2px do h3 da seção e a 4px do corpo: três tamanhos quase iguais, hierarquia
-   plana. O painel escapa disso porque tem os 34px da medição; a /sistema e a
-   /calibracao não têm medição nenhuma, então o título precisa ocupar esse
-   degrau. */
 .titulo-pagina {
-  margin: var(--e5) 0 var(--e3);
+  margin: var(--e6) 0 var(--e3);
   font-size: var(--t-valor);
   font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.15;
 }
 
-.conteudo h3 {
-  margin: var(--e5) 0 var(--e3);
-  font-size: var(--t-grandeza);
-  font-weight: 600;
+.lede {
+  max-width: var(--medida);
+  margin-bottom: var(--e6);
+  color: var(--meio);
+  font-size: var(--t-corpo);
+  line-height: 1.6;
 }
 
-.explicacao.larga { margin-bottom: var(--e3); }
+.secao {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: var(--e6);
+  align-items: start;
+  padding: var(--e6) 0;
+  border-top: 1px solid var(--regua);
+}
+
+.secao h3 {
+  font-size: var(--t-grandeza);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.5;
+}
+
+.secao-resumo {
+  max-width: var(--medida);
+  margin-top: var(--e3);
+  color: var(--meio);
+  font-size: var(--t-apoio);
+  line-height: 1.6;
+}
+
+.secao-corpo > * + * { margin-top: var(--e4); }
+
+.secao-corpo p {
+  max-width: var(--medida);
+  color: var(--meio);
+  font-size: var(--t-apoio);
+  line-height: 1.6;
+}
+
+.secao-corpo p b { color: var(--tinta); font-weight: 600; }
+
+/* --- números de coleta: medição, não nota de rodapé ---------------------- */
+/* Estavam em 14px cinza, do mesmo tamanho e cor da prosa à volta. São
+   contagens de um instrumento: o número vem primeiro e o rótulo embaixo. */
+
+.contagens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e5) var(--e8);
+}
+
+.contagem dd {
+  margin: 0;
+  color: var(--tinta);
+  font-size: var(--t-titulo);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.contagem dt {
+  margin-top: var(--e1);
+  color: var(--meio);
+  font-size: var(--t-apoio);
+}
+
+.contagem .parte { color: var(--meio); font-size: var(--t-apoio); font-weight: 400; }
+
+/* --- ficha de rastreabilidade -------------------------------------------- */
+
+.ficha {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--e2) var(--e5);
+  font-size: var(--t-apoio);
+}
+
+.ficha dt { color: var(--meio); }
+.ficha dd { margin: 0; color: var(--tinta); }
+
+/* --- listas: na margem do conteúdo, não 16px à direita dele --------------- */
+
+.passos {
+  max-width: var(--medida);
+  padding-left: var(--e5);
+  color: var(--meio);
+  font-size: var(--t-apoio);
+  line-height: 1.6;
+}
+
+.passos li + li { margin-top: var(--e2); }
+.passos li::marker { color: var(--fraco); }
+
+/* --- recados ------------------------------------------------------------- */
 
 .recado {
   max-width: var(--medida);
@@ -424,43 +512,23 @@ footer {
 .recado.ok { background: #eef4ef; color: var(--bom); border-left: 3px solid var(--bom); }
 .recado.erro { background: #f7ece9; color: var(--ruim); border-left: 3px solid var(--ruim); }
 
-.estado-calibracao {
+/* --- formulário ---------------------------------------------------------- */
+/* Campo dimensionado pelo que cabe nele: um LAeq tem quatro caracteres, e um
+   campo de 389px para quatro caracteres é o que dava a essa página a cara de
+   mal dimensionada. */
+
+.formulario { max-width: 420px; }
+
+.campo + .campo { margin-top: var(--e4); }
+
+.campo label {
+  display: block;
   margin-bottom: var(--e2);
-  padding: var(--e4) 0;
-  border-top: 1px solid var(--regua);
-  border-bottom: 1px solid var(--regua);
-}
-
-.ficha {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--e1) var(--e4);
-  margin-top: var(--e3);
   font-size: var(--t-apoio);
+  color: var(--tinta);
 }
 
-.ficha dt { color: var(--meio); }
-.ficha dd { margin: 0; }
-
-.passos {
-  max-width: var(--medida);
-  margin: 0 0 var(--e5) var(--e4);
-  color: var(--meio);
-  font-size: var(--t-apoio);
-  line-height: 1.6;
-}
-
-.passos li { margin-bottom: var(--e1); }
-
-.formulario { max-width: 420px; margin: var(--e1) 0 var(--e5); }
-
-.campo { margin-bottom: var(--e4); }
-.campo label { display: block; margin-bottom: var(--e1); font-size: var(--t-apoio); }
 .campo .opcional { color: var(--meio); }
-
-.com-unidade { display: flex; align-items: center; gap: var(--e2); }
-.com-unidade span { color: var(--meio); font-size: var(--t-apoio); }
-.com-unidade input { width: 140px; }
 
 .campo input {
   width: 100%;
@@ -470,13 +538,20 @@ footer {
   background: var(--papel);
   color: var(--tinta);
   font: inherit;
+  font-size: var(--t-apoio);
   font-variant-numeric: tabular-nums;
 }
 
-.campo input:focus-visible { border-color: var(--capa); }
+.campo input::placeholder { color: var(--meio); }
+.campo input:focus-visible { border-color: var(--capa); outline-offset: 1px; }
+
+.com-unidade { display: flex; align-items: center; gap: var(--e3); }
+.com-unidade input { width: 112px; }
+.com-unidade span { color: var(--meio); font-size: var(--t-apoio); }
 
 .formulario button {
   min-height: 44px;
+  margin-top: var(--e5);
   padding: var(--e3) var(--e4);
   border: 1px solid var(--capa);
   background: var(--capa);
@@ -486,4 +561,17 @@ footer {
   cursor: pointer;
 }
 
-.formulario button:hover { background: var(--capa-fundo); }
+.formulario button:hover { background: var(--capa-fundo); border-color: var(--capa-fundo); }
+
+/* Fileira de opções paralelas: largura igual, porque dimensionar pelo texto
+   deixava 94, 102, 104 e 112px lado a lado e lia como desalinho. */
+.fileira { display: flex; flex-wrap: wrap; gap: var(--e2); }
+.fileira .botao { min-width: 128px; justify-content: center; }
+
+@media (max-width: 760px) {
+  .secao { grid-template-columns: 1fr; gap: var(--e4); padding: var(--e5) 0; }
+  .titulo-pagina { margin-top: var(--e5); }
+  .lede { margin-bottom: var(--e4); }
+  .contagens { gap: var(--e4) var(--e5); }
+  .fileira .botao { flex: 1 1 128px; }
+}

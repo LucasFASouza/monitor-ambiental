@@ -34,85 +34,120 @@
 
 <main class="conteudo">
   <h2 class="titulo-pagina">Sistema</h2>
-  <p class="explicacao larga">O que o aparelho sabe sobre si mesmo: se está coletando,
-    se o nível de ruído já foi comparado com um medidor de referência, e o que ele não
-    consegue medir.</p>
+  <p class="lede">O que o aparelho sabe sobre si mesmo: se está coletando, se o nível de
+    ruído já foi comparado com um medidor de referência, e o que ele não consegue medir.</p>
 
-  <h3>Coleta nas últimas 24 horas</h3>
-  <dl class="ficha">
-    <dt>Leituras de ar</dt>
-    <dd>{{ sistema.saude.ar.leituras }}
-      {%- if sistema.saude.ar.completude_pct is not none %}
-        — {{ sistema.saude.ar.completude_pct }} % do esperado{% endif %}</dd>
-    <dt>Janelas de ruído</dt>
-    <dd>{{ sistema.saude.ruido.leituras }}
-      {%- if sistema.saude.ruido.completude_pct is not none %}
-        — {{ sistema.saude.ruido.completude_pct }} %{% endif %}</dd>
-    <dt>Interrupções</dt>
-    <dd>
-      {%- set bar = sistema.saude.ar.buracos %}{% set bruido = sistema.saude.ruido.buracos %}
-      {%- if not bar and not bruido %}nenhuma
-      {%- else %}{{ bar }} no ar, {{ bruido }} no ruído{% endif %}</dd>
-  </dl>
-  <p class="explicacao larga">Cada interrupção aparece no gráfico como um trecho reto entre
-    as duas leituras que sobraram — não como queda. O DHT11 perde parte das leituras por
-    característica do próprio sensor, então alguma falta é esperada; o que importa é a
-    tendência, não o número bruto.</p>
-
-  <h3>Calibração do ruído</h3>
-  {% if sistema.calibrado %}
-    <p class="frescor"><span class="pulso" aria-hidden="true"></span>
-      Calibrado com offset de {{ sistema.offset }} dB.</p>
-    {% if sistema.ultima %}
-      <dl class="ficha">
-        <dt>Medidor de referência mostrou</dt>
-        <dd>{{ sistema.ultima.referencia_dba }} dB(A)</dd>
-        <dt>Este monitor mediu</dt>
-        <dd>{{ sistema.ultima.medido_dbfs }} dBFS</dd>
-        <dt>Janela comparada</dt>
-        <dd>{{ sistema.ultima.minutos }} min</dd>
-        <dt>Quando</dt>
-        <dd>{{ sistema.ultima.quando }}</dd>
-        {% if sistema.ultima.observacao %}
-          <dt>Instrumento</dt><dd>{{ sistema.ultima.observacao }}</dd>
-        {% endif %}
+  <section class="secao">
+    <div>
+      <h3>Coleta nas últimas 24 horas</h3>
+      <p class="secao-resumo">Quanto do período tem medição de verdade por trás.</p>
+    </div>
+    <div class="secao-corpo">
+      <dl class="contagens">
+        <div class="contagem">
+          <dd>{{ sistema.saude.ar.leituras }}
+            {%- if sistema.saude.ar.completude_pct is not none %}
+              <span class="parte">· {{ sistema.saude.ar.completude_pct }} % do esperado</span>
+            {%- endif %}</dd>
+          <dt>Leituras de ar</dt>
+        </div>
+        <div class="contagem">
+          <dd>{{ sistema.saude.ruido.leituras }}
+            {%- if sistema.saude.ruido.completude_pct is not none %}
+              <span class="parte">· {{ sistema.saude.ruido.completude_pct }} % do esperado</span>
+            {%- endif %}</dd>
+          <dt>Janelas de ruído</dt>
+        </div>
+        <div class="contagem">
+          {%- set bar = sistema.saude.ar.buracos %}{% set bruido = sistema.saude.ruido.buracos %}
+          <dd>{% if not bar and not bruido %}nenhuma{% else %}{{ bar + bruido }}{% endif %}</dd>
+          <dt>Interrupções
+            {%- if bar or bruido %} ({{ bar }} no ar, {{ bruido }} no ruído){% endif %}</dt>
+        </div>
       </dl>
-    {% endif %}
-  {% else %}
-    <p class="frescor parado"><span class="pulso" aria-hidden="true"></span>
-      Sem calibração. O offset de {{ sistema.offset }} dB é o valor de catálogo do
-      microfone, não uma medição.</p>
-  {% endif %}
-  <p class="explicacao larga">O microfone mede em dBFS, uma escala relativa ao próprio
-    circuito. Enquanto não for comparado com um medidor de referência, confie na variação
-    do gráfico e não no número absoluto. Recalibrar reinterpreta todo o histórico: nada é
-    reescrito, porque o banco guarda o nível cru.</p>
-  <p><a class="botao" href="{{ url_for('pagina_calibracao') }}">
-    {{ 'Recalibrar o ruído' if sistema.calibrado else 'Calibrar o ruído' }}</a></p>
+      <p>Cada interrupção aparece no gráfico como um trecho reto entre as duas leituras que
+        sobraram — não como queda. O DHT11 perde parte das leituras por característica do
+        próprio sensor, então alguma falta é esperada; o que importa é a tendência, não o
+        número bruto.</p>
+    </div>
+  </section>
 
-  <h3>O que este monitor não mede</h3>
-  <ul class="passos">
-    <li>Não é instrumento de higiene ocupacional. Avaliação de insalubridade exige medidor
-      com certificado de calibração, e este aparelho não substitui isso.</li>
-    <li>Não mede calor radiante, então não serve para IBUTG — isso exigiria termômetro de
-      globo, além do bulbo seco e do bulbo úmido.</li>
-    <li>O DHT11 tem resolução de 1 °C e precisão de ±5 % na umidade. Limites mais estreitos
-      que isso dariam uma falsa sensação de exatidão.</li>
-  </ul>
+  <section class="secao">
+    <div>
+      <h3>Calibração do ruído</h3>
+      <p class="secao-resumo">Se o número em dB(A) já foi ancorado num medidor de
+        referência.</p>
+    </div>
+    <div class="secao-corpo">
+      {% if sistema.calibrado %}
+        <p class="frescor"><span class="pulso" aria-hidden="true"></span>
+          Calibrado com offset de {{ sistema.offset }} dB.</p>
+        {% if sistema.ultima %}
+          <dl class="ficha">
+            <dt>Medidor de referência mostrou</dt>
+            <dd>{{ sistema.ultima.referencia_dba }} dB(A)</dd>
+            <dt>Este monitor mediu</dt>
+            <dd>{{ sistema.ultima.medido_dbfs }} dBFS</dd>
+            <dt>Janela comparada</dt>
+            <dd>{{ sistema.ultima.minutos }} min</dd>
+            <dt>Quando</dt>
+            <dd>{{ sistema.ultima.quando }}</dd>
+            {% if sistema.ultima.observacao %}
+              <dt>Instrumento</dt><dd>{{ sistema.ultima.observacao }}</dd>
+            {% endif %}
+          </dl>
+        {% endif %}
+      {% else %}
+        <p class="frescor parado"><span class="pulso" aria-hidden="true"></span>
+          Sem calibração. O offset de {{ sistema.offset }} dB é o valor de catálogo do
+          microfone, não uma medição.</p>
+      {% endif %}
+      <p>O microfone mede em dBFS, uma escala relativa ao próprio circuito. Enquanto não for
+        comparado com um medidor de referência, confie na variação do gráfico e não no número
+        absoluto. Recalibrar reinterpreta todo o histórico: nada é reescrito, porque o banco
+        guarda o nível cru.</p>
+      <p><a class="botao" href="{{ url_for('pagina_calibracao') }}">
+        {{ 'Recalibrar o ruído' if sistema.calibrado else 'Calibrar o ruído' }}</a></p>
+    </div>
+  </section>
 
-  <h3>Levar os dados embora</h3>
-  <p class="explicacao larga">Um arquivo por período, uma linha por minuto, com temperatura,
-    umidade e ruído lado a lado. Minuto sem leitura sai com a célula vazia, não interpolada.
-    O ruído sai duas vezes: em dB(A) e em dBFS cru, com o offset usado — assim o arquivo
-    continua legível mesmo depois de uma recalibração.</p>
-  <p class="fileira">
-    {% for horas, rotulo in sistema.periodos %}
-      <a class="botao vazado" href="{{ url_for('exportar_csv', horas=horas) }}" download>
-        <svg aria-hidden="true"><use href="#i-baixar"></use></svg>
-        {{ rotulo }}
-      </a>
-    {% endfor %}
-  </p>
+  <section class="secao">
+    <div>
+      <h3>O que este monitor não mede</h3>
+      <p class="secao-resumo">Os limites do aparelho, para não confiar nele além do que
+        ele alcança.</p>
+    </div>
+    <div class="secao-corpo">
+      <ul class="passos">
+        <li>Não é instrumento de higiene ocupacional. Avaliação de insalubridade exige
+          medidor com certificado de calibração, e este aparelho não substitui isso.</li>
+        <li>Não mede calor radiante, então não serve para IBUTG — isso exigiria termômetro
+          de globo, além do bulbo seco e do bulbo úmido.</li>
+        <li>O DHT11 tem resolução de 1 °C e precisão de ±5 % na umidade. Limites mais
+          estreitos que isso dariam uma falsa sensação de exatidão.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div>
+      <h3>Levar os dados embora</h3>
+      <p class="secao-resumo">Um arquivo por período, uma linha por minuto.</p>
+    </div>
+    <div class="secao-corpo">
+      <p class="fileira">
+        {% for horas, rotulo in sistema.periodos %}
+          <a class="botao vazado" href="{{ url_for('exportar_csv', horas=horas) }}" download>
+            <svg aria-hidden="true"><use href="#i-baixar"></use></svg>
+            {{ rotulo }}
+          </a>
+        {% endfor %}
+      </p>
+      <p>Temperatura, umidade e ruído lado a lado. Minuto sem leitura sai com a célula vazia,
+        não interpolada. O ruído sai duas vezes: em dB(A) e em dBFS cru, com o offset usado —
+        assim o arquivo continua legível mesmo depois de uma recalibração.</p>
+    </div>
+  </section>
 </main>
 
 </body>

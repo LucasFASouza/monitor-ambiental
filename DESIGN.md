@@ -231,6 +231,25 @@ Links, não `<select>`: o campo de formulário submetia na primeira seta do
 teclado, então quem navega por teclado andava uma opção por carregamento de
 página e perdia o foco em cada uma.
 
+### Subpáginas
+
+A /sistema e a /calibracao usam a mesma faixa de duas colunas da grandeza:
+290px de título e resumo à esquerda, conteúdo à direita, régua de um pixel
+entre seções. Não é decoração: empilhar tudo numa margem só, sem divisória
+entre quatro seções, fazia as subpáginas lerem como outro produto.
+
+O título da página abre em 2,125rem e um lede em 1rem; dentro das seções, o
+resumo da esquerda e todo o corpo da direita ficam em 0,875rem. Listas começam
+na margem do conteúdo, nunca indentadas além dela.
+
+Campo de formulário é dimensionado pelo que cabe nele: 112px para um LAeq de
+quatro caracteres, não a largura do contêiner. Fileira de opções paralelas tem
+largura igual — dimensionar cada botão pelo texto deixava 94, 102, 104 e 112px
+lado a lado, lendo como desalinho.
+
+Contagem de coleta é medição, não nota de rodapé: o número em 1,25rem com o
+rótulo embaixo, não 14px cinza no meio da prosa.
+
 ### Gráfico
 
 O componente central. Construído em `grafico.py`, no servidor.
