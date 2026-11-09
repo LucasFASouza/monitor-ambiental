@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 import avaliacao
 import config
 import database
-import grafico
 
 # Cores da régua de faixas. Vêm do material impresso da caderneta de saúde,
 # onde a faixa de referência é parte do gráfico e não um semáforo de interface.
@@ -150,28 +149,6 @@ def _faixas_visiveis(grandeza: str, ymin: float, ymax: float):
     return recortes
 
 
-def _faixas_do_eixo(grandeza: str, ymin: float, ymax: float):
-    """Converte os limites de config em trechos coloridos para a régua do eixo."""
-    bom_de, bom_ate = config.LIMITES[grandeza]["bom"]
-    at_de, at_ate = config.LIMITES[grandeza]["atencao"]
-
-    trechos = []
-
-    if at_de > ymin:
-        trechos.append((ymin, at_de, COR_FAIXA["ruim"]))
-    if bom_de > at_de:
-        trechos.append((at_de, bom_de, COR_FAIXA["atencao"]))
-
-    trechos.append((max(bom_de, ymin), min(bom_ate, ymax), COR_FAIXA["bom"]))
-
-    if at_ate > bom_ate:
-        trechos.append((bom_ate, at_ate, COR_FAIXA["atencao"]))
-    if ymax > at_ate:
-        trechos.append((at_ate, ymax, COR_FAIXA["ruim"]))
-
-    return [(de, ate, cor) for de, ate, cor in trechos if ate > de]
-
-
 # Cada grandeza: rótulo, unidade, casas, escala do eixo e as réguas de limite,
 # com a norma que as sustenta dita por extenso para quem não a conhece.
 GRANDEZAS = {
@@ -227,27 +204,6 @@ GRANDEZAS = {
 }
 
 
-def _rotulos_de_tempo(desde: int, ate: int, horas: int):
-    """Cinco marcas no eixo do tempo, a última sempre 'agora'."""
-    marcas = []
-
-    for i in range(5):
-        fracao = i / 4
-        instante = desde + (ate - desde) * fracao
-        local = datetime.fromtimestamp(instante)
-
-        if i == 4:
-            rotulo = "agora"
-        elif horas > 48:
-            rotulo = local.strftime("%d/%m")
-        else:
-            rotulo = local.strftime("%Hh")
-
-        marcas.append((fracao, rotulo))
-
-    return marcas
-
-
 def _marcas_por_ponto(desde: int, ate: int, horas: int, quantos: int):
     """Um rótulo de hora por ponto, para o eixo e para a dica do mouse."""
     formato = "%d/%m %Hh" if horas > 48 else "%Hh%M"
@@ -256,6 +212,27 @@ def _marcas_por_ponto(desde: int, ate: int, horas: int, quantos: int):
         datetime.fromtimestamp(desde + (ate - desde) * i / max(quantos - 1, 1)).strftime(formato)
         for i in range(quantos)
     ]
+
+
+def agregar(valores, alvo):
+    """Reduz a série a `alvo` baldes, com média, mínimo e máximo de cada um.
+
+    Amostra crua em centenas de pontos vira faixa peluda e ilegível; média
+    sozinha apagaria o pico, que é justamente o que importa em ruído. Por isso
+    cada balde carrega os três, e o gráfico desenha a média com o envelope
+    atrás.
+    """
+    if not valores:
+        return []
+
+    passo = max(len(valores) // alvo, 1)
+    baldes = []
+
+    for inicio in range(0, len(valores), passo):
+        balde = valores[inicio:inicio + passo]
+        baldes.append((sum(balde) / len(balde), min(balde), max(balde)))
+
+    return baldes
 
 
 def resumo_sensor(d: dict) -> dict:
@@ -509,7 +486,7 @@ def montar(horas: int = 24) -> dict:
 
         # Os rótulos derivam da contagem real de baldes: `agregar` arredonda
         # para cima, então fixar 96 desalinharia o eixo dos dados.
-        pontos = grafico.agregar(series[chave], 96)
+        pontos = agregar(series[chave], 96)
         marcas = _marcas_por_ponto(desde, ate, horas, len(pontos))
 
         blocos.append({

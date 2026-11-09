@@ -252,7 +252,10 @@ rótulo embaixo, não 14px cinza no meio da prosa.
 
 ### Gráfico
 
-O componente central. Construído em `grafico.py`, no servidor.
+O componente central. Desenhado pelo Chart.js no cliente, com a semântica —
+janela, faixas, limites, agregação — decidida no servidor e mandada pronta em
+JSON. Passar o mouse e ler o valor de um ponto é função numa série temporal, e
+era o que faltava quando o gráfico era SVG estático.
 
 Anatomia, de fora para dentro: régua de faixas colorida encostada na área de
 plotagem; réguas de limite normativo atravessando a área, cada uma rotulada na
@@ -284,9 +287,8 @@ ali, e enquadrava igual quem só raspou o amarelo e quem entrou fundo no
 vermelho. Sem o vermelho, a janela não passa das bordas do amarelo — qualquer
 valor fora delas já seria vermelho, então o dado cabe por definição.
 
-Dois renders por grandeza, largo e estreito, trocados por media query: o SVG
-encolhe proporcionalmente, e um desenho de 660px chega a 7px de fonte num
-celular de 375.
+Um canvas responsivo por grandeza. A faixa de 44px no topo é do disparador de
+informação, e o canvas mantém 188px de altura em qualquer largura.
 
 ## Do's and Don'ts
 

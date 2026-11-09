@@ -21,7 +21,6 @@ INMP441  ┘
 | `collector.py` | Processo que lê o sensor e grava, em intervalos regulares |
 | `app.py` | Flask: as APIs e a página |
 | `painel.py` | Monta a visão da página: o que cada grandeza mostra e como se lê |
-| `grafico.py` | Desenha o gráfico temporal em SVG, no servidor |
 | `avaliacao.py` | Classificação em Bom, Atenção e Ruim |
 | `teste_dht.py` | Teste isolado do sensor, sem banco e sem Flask |
 | `deploy/` | Units de systemd para o coletor e o dashboard |
@@ -309,10 +308,12 @@ limites mais estreitos que isso dariam uma falsa sensação de exatidão.
 
 ## Sobre o gráfico
 
-O gráfico é SVG gerado no servidor, em `grafico.py`. Não há biblioteca de
-gráficos: são poucos clientes na rede local, o Raspberry desenha isso sem
-esforço, e a página passa a funcionar sem JavaScript. A troca tirou 205 KB de
-dependência e a página inteira, com os seis gráficos, cabe em 30 KB.
+O gráfico é desenhado pelo Chart.js no cliente, com a biblioteca servida pelo
+próprio aparelho — nada de CDN, porque o monitor funciona sem internet. A
+semântica é decidida no servidor e mandada pronta em JSON: janela do eixo,
+faixas, limites e agregação. Houve uma versão em SVG gerado no servidor, mais
+leve, mas ela não tinha o que importa numa série temporal: passar o mouse e ler
+o valor de um ponto. Sem JavaScript, cada gráfico vira um resumo em texto.
 
 Quatro decisões de legibilidade, cada uma corrigindo um erro concreto:
 

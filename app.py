@@ -41,8 +41,11 @@ def _inteiro(nome: str, padrao: int, minimo: int, maximo: int) -> int:
 
 @app.get("/")
 def pagina():
-    # A página é montada inteira no servidor, gráficos incluídos: são poucos
-    # clientes na rede local, e assim ela funciona sem JavaScript.
+    # O servidor decide a semântica — janela do eixo, faixas, limites, classes e
+    # textos — e manda pronta. O desenho do histórico é do Chart.js, no cliente:
+    # passar o mouse e ler o valor de um ponto é função numa série temporal, e
+    # era o que faltava quando o gráfico era SVG estático. Sem JavaScript, cada
+    # gráfico vira o resumo em texto do <noscript>.
     return render_template("index.html", visao=painel.montar(_inteiro("horas", 24, 1, 24 * 90)))
 
 
