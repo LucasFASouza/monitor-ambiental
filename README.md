@@ -5,7 +5,7 @@ histórico em SQLite e um dashboard web acessível pela rede local.
 
 ```text
 DHT11    ┐
-         ├→ Raspberry Pi → SQLite → Flask → Chart.js → dashboard
+         ├→ Raspberry Pi → SQLite → Flask → SVG → dashboard
 INMP441  ┘
 ```
 
@@ -20,10 +20,12 @@ INMP441  ┘
 | `database.py` | Esquema e consultas do SQLite |
 | `collector.py` | Processo que lê o sensor e grava, em intervalos regulares |
 | `app.py` | Flask: as APIs e a página |
+| `painel.py` | Monta a visão da página: o que cada grandeza mostra e como se lê |
+| `grafico.py` | Desenha o gráfico temporal em SVG, no servidor |
 | `avaliacao.py` | Classificação em Bom, Atenção e Ruim |
 | `teste_dht.py` | Teste isolado do sensor, sem banco e sem Flask |
 | `deploy/` | Units de systemd para o coletor e o dashboard |
-| `scripts/` | Atualizar o Chart.js e semear histórico simulado |
+| `scripts/` | Semear histórico simulado para trabalhar sem o Raspberry |
 
 São três processos independentes: o coletor de ar, o coletor de ruído e o
 dashboard. Se o Flask cair, a coleta continua. Se um coletor parar, o outro
@@ -305,6 +307,35 @@ alguma coisa, é aqui que falta checagem.
 E vale lembrar ao revisar: a umidade do DHT11 tem precisão de ±5%, então
 limites mais estreitos que isso dariam uma falsa sensação de exatidão.
 
+## Sobre o gráfico
+
+O gráfico é SVG gerado no servidor, em `grafico.py`. Não há biblioteca de
+gráficos: são poucos clientes na rede local, o Raspberry desenha isso sem
+esforço, e a página passa a funcionar sem JavaScript. A troca tirou 205 KB de
+dependência e a página inteira, com os seis gráficos, cabe em 30 KB.
+
+Quatro decisões de legibilidade, cada uma corrigindo um erro concreto:
+
+**Eixo Y fixo nas faixas de classificação, nunca autoescalado nos dados.**
+Autoescala transforma 0,9 °C de variação num penhasco e esconde que a sala
+está estável.
+
+**A série é a média de baldes, com o mínimo e o máximo do balde atrás, como
+envelope.** Amostra crua em 288 pontos vira faixa peluda; a média sozinha
+apagaria o pico, que em ruído é a informação.
+
+**As faixas aparecem numa régua no próprio eixo**, e não preenchendo a área de
+plotagem. Preenchimento tinge tudo e mata a leitura da série.
+
+**O limite normativo é régua anotada numa calha à direita**, em tom de
+anotação. Rótulo dentro da área colide com a série, e vermelho ali mente,
+porque 18 e 25 °C são os limites do que é bom.
+
+Há dois renders por grandeza, um para tela larga e um estreito para celular. O
+SVG encolhe proporcionalmente, então um desenho feito para 660 px de largura
+chega a 7 px de fonte num celular de 375 — ilegível justamente onde a leitura
+precisa funcionar.
+
 ## Sobre o ruído
 
 ### Por que é uma estatística, não uma leitura
@@ -404,10 +435,6 @@ consultar a ABNT NBR 17037. Ver a ressalva na seção de classificação.
 
 Acesso remoto por Tailscale, depois que o protótipo local estiver estável. O
 banco e os dados continuam no Raspberry.
-
-O Chart.js vem versionado em `static/vendor/`, servido pelo próprio Raspberry:
-o dashboard continua funcionando numa rede local sem internet. Para trocar de
-versão, edite e rode `scripts/buscar_vendor.sh`.
 
 O `app.py` sobe o servidor de desenvolvimento do Flask, o que é adequado para um
 protótipo na rede local. Se o dashboard virar algo permanente, trocar por

@@ -1,230 +1,185 @@
+/* Mundo: a Caderneta de Saúde da Criança — cor institucional saturada e a
+   faixa de referência impressa no gráfico. Não o papel creme, que é o lugar
+   onde todo projeto deste tipo aterrissa. */
+
 :root {
-  color-scheme: light dark;
+  --capa: #0d6a66;
+  --capa-fundo: #0a5753;
+  --capa-texto: #eaf4f3;
+  --capa-fraco: #c8e3e0;
 
-  --fundo: #f4f5f7;
-  --superficie: #ffffff;
-  --borda: #e2e5ea;
-  --texto: #1c1f24;
-  --texto-fraco: #6b7280;
+  --papel: #ffffff;
+  --ambiente: #f4f6f6;
+  --tinta: #17202a;
+  --meio: #5f6a74;
+  --fraco: #8b949d;
+  --regua: #dde2e5;
 
-  --bom: #1a8f4c;
-  --bom-fundo: #e6f4ec;
-  --atencao: #b4740a;
-  --atencao-fundo: #fdf3e0;
-  --ruim: #c2372c;
-  --ruim-fundo: #fbeceb;
+  --bom: #2f6b45;
+  --atencao: #8a5e08;
+  --ruim: #8f3023;
+  --limite: #8a6a20;
 
-  --grade: #e2e5ea;
+  color-scheme: light;
+  accent-color: var(--capa);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fundo: #14171c;
-    --superficie: #1c2027;
-    --borda: #2b3038;
-    --texto: #e9ecf1;
-    --texto-fraco: #9aa3af;
+* { box-sizing: border-box; margin: 0; }
 
-    --bom: #4ecb84;
-    --bom-fundo: #16301f;
-    --atencao: #e3a93c;
-    --atencao-fundo: #332713;
-    --ruim: #f0736a;
-    --ruim-fundo: #351a19;
+::selection { background: var(--capa); color: var(--capa-texto); }
 
-    --grade: #2b3038;
-  }
+:focus-visible {
+  outline: 2px solid var(--capa);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
-
-* { box-sizing: border-box; }
 
 body {
-  margin: 0;
-  padding: 24px;
-  background: var(--fundo);
-  color: var(--texto);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--ambiente);
+  color: var(--tinta);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
 
-h1, h2 { margin: 0; font-weight: 600; }
+/* --- capa: um campo saturado ocupando a região inteira, não um acento ----- */
 
-.cabecalho {
+.capa { background: var(--capa); color: var(--capa-texto); }
+
+.capa-fita {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
-  max-width: 1100px;
-  margin: 0 auto 24px;
+  align-items: flex-end;
+  gap: 16px 28px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 22px 32px 0;
 }
 
-.cabecalho h1 { font-size: 1.5rem; }
+.capa h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.012em; }
 
-.subtitulo {
-  margin: 4px 0 0;
-  color: var(--texto-fraco);
-  font-size: 0.875rem;
+.local { margin-top: 2px; color: var(--capa-fraco); font-size: 0.9375rem; }
+
+.periodos { display: flex; gap: 4px; margin-left: auto; }
+
+.periodos a {
+  padding: 10px 15px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--capa-fraco);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
 }
 
-.estado { text-align: right; }
+.periodos a:hover { color: var(--capa-texto); }
 
-.indicador {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--borda);
-  color: var(--texto-fraco);
-  font-size: 0.75rem;
+.periodos a[aria-current] {
+  color: var(--capa-texto);
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  border-bottom-color: var(--capa-texto);
 }
 
-.indicador.ativo  { background: var(--bom-fundo);  color: var(--bom); }
-.indicador.parado { background: var(--ruim-fundo); color: var(--ruim); }
+/* --- corpo ---------------------------------------------------------------- */
 
-.atualizacao {
-  display: block;
-  margin-top: 6px;
-  color: var(--texto-fraco);
-  font-size: 0.8125rem;
+main { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
+
+.situacao {
+  margin: 34px 0 18px;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  max-width: 58ch;
 }
 
-main { max-width: 1100px; margin: 0 auto; }
+.situacao b { font-weight: 600; }
 
-.cartoes {
+.situacao.alerta { color: var(--ruim); font-weight: 600; }
+
+.n-bom { color: var(--bom); }
+.n-atencao { color: var(--atencao); }
+.n-ruim { color: var(--ruim); }
+
+.grandeza {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: 290px 1fr;
+  gap: 36px;
+  align-items: start;
+  padding: 30px 0;
+  border-top: 1px solid var(--regua);
 }
 
-.cartao, .painel {
-  padding: 20px;
-  border: 1px solid var(--borda);
-  border-radius: 12px;
-  background: var(--superficie);
-}
+.grandeza:first-of-type { border-top: 0; }
 
-.cartao h2, .painel h2 {
-  color: var(--texto-fraco);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
+/* Mais espaço acima de um título do que abaixo dele. */
+.leitura h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 7px; }
+
+.frase { font-size: 1rem; line-height: 1.55; }
 
 .valor {
-  margin: 12px 0 0;
-  font-size: 2.75rem;
+  margin-top: 10px;
+  font-size: 2.125rem;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
 }
-
-.valor-geral { font-size: 1.75rem; }
 
 .unidade {
   margin-left: 4px;
-  color: var(--texto-fraco);
-  font-size: 1.25rem;
-  font-weight: 500;
+  color: var(--meio);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
-.detalhe {
-  margin: 6px 0 0;
-  color: var(--texto-fraco);
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.selo {
-  display: inline-block;
-  margin: 12px 0 0;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--borda);
-  color: var(--texto-fraco);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.selo-vazio { background: none; }
-
-.nivel-bom     { background: var(--bom-fundo);     color: var(--bom); }
-.nivel-atencao { background: var(--atencao-fundo); color: var(--atencao); }
-.nivel-ruim    { background: var(--ruim-fundo);    color: var(--ruim); }
-
-.cartao.nivel-bom     { border-color: var(--bom); }
-.cartao.nivel-atencao { border-color: var(--atencao); }
-.cartao.nivel-ruim    { border-color: var(--ruim); }
-
-#valor-geral.nivel-bom,
-#valor-geral.nivel-atencao,
-#valor-geral.nivel-ruim { background: none; padding: 0; }
-
-.periodos { display: flex; gap: 8px; margin: 28px 0 16px; }
-
-.periodos button {
-  padding: 7px 14px;
-  border: 1px solid var(--borda);
-  border-radius: 8px;
-  background: var(--superficie);
-  color: var(--texto-fraco);
-  font: inherit;
+.referencia {
+  margin-top: 10px;
+  color: var(--meio);
   font-size: 0.875rem;
-  cursor: pointer;
+  line-height: 1.6;
 }
 
-.periodos button:hover { color: var(--texto); }
+/* O gráfico senta direto na página: um painel com borda em volta dele seria
+   um cartão, e o mundo escolhido não tem cartão. */
+.curva { padding: 2px 0 0; }
 
-.periodos button.ativo {
-  border-color: var(--texto);
-  color: var(--texto);
-  font-weight: 600;
-}
+.curva-estreita { display: none; }
 
-.graficos {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
-}
+.curva svg { display: block; }
 
-.area-grafico { position: relative; height: 260px; margin-top: 12px; }
+/* --- pé ------------------------------------------------------------------- */
 
-.aviso {
-  margin-top: 16px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  background: var(--ruim-fundo);
-  color: var(--ruim);
+footer {
+  max-width: 1120px;
+  margin: 10px auto 0;
+  padding: 20px 32px 44px;
+  border-top: 1px solid var(--regua);
+  color: var(--meio);
   font-size: 0.875rem;
+  line-height: 1.7;
 }
 
-.rodape {
-  max-width: 1100px;
-  margin: 32px auto 0;
-  color: var(--texto-fraco);
-  font-size: 0.8125rem;
-}
+footer p + p { margin-top: 9px; }
 
-.rodape p { margin: 0 0 6px; }
+footer p { max-width: 74ch; }
 
-#aviso-calibracao { max-width: 70ch; }
+.ressalva { color: var(--ruim); }
 
-@media (max-width: 640px) {
-  body { padding: 16px; }
+/* --- celular: modo secundário --------------------------------------------- */
 
-  /* O bloco de estado quebra para a linha de baixo e passa a ocupar a
-     largura toda; alinhado à direita ficaria solto no meio da tela. */
-  .estado { text-align: left; }
+@media (max-width: 760px) {
+  .capa-fita { padding: 18px 18px 0; }
+  .periodos { margin-left: 0; width: 100%; overflow-x: auto; }
+  main { padding: 0 18px; }
+  footer { padding: 18px 18px 36px; }
 
-  /* Com os cartões empilhados, o espaço reservado para alinhar os selos na
-     mesma altura vira só um buraco no fim do cartão. */
-  .selo-vazio { display: none; }
+  .situacao { font-size: 1.125rem; margin-top: 24px; }
 
-  .valor { font-size: 2.25rem; }
+  /* O gráfico passa a vir abaixo do texto: lado a lado em 360 px espremeria
+     os dois até nenhum ser legível. */
+  .grandeza { grid-template-columns: 1fr; gap: 16px; }
 
-  .area-grafico { height: 220px; }
+  .curva { margin: 0; }
+  .curva-larga { display: none; }
+  .curva-estreita { display: block; }
 }

@@ -13,6 +13,7 @@ from flask import Flask, jsonify, render_template, request
 import avaliacao
 import config
 import database
+import painel
 
 app = Flask(__name__)
 
@@ -42,11 +43,9 @@ OFFSET_SEM_CALIBRACAO = 120.0
 
 @app.get("/")
 def pagina():
-    return render_template(
-        "index.html",
-        intervalo=config.INTERVALO_SEGUNDOS,
-        janela_ruido=config.RUIDO_JANELA_SEGUNDOS,
-    )
+    # A página é montada inteira no servidor, gráficos incluídos: são poucos
+    # clientes na rede local, e assim ela funciona sem JavaScript.
+    return render_template("index.html", visao=painel.montar(_inteiro("horas", 24, 1, 24 * 90)))
 
 
 def _bloco_ruido() -> dict | None:
