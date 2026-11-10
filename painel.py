@@ -204,33 +204,31 @@ GRANDEZAS = {
 }
 
 
-def _marcas_por_ponto(desde: int, ate: int, horas: int, quantos: int):
-    """Um rótulo de hora por ponto, para o eixo e para a dica do mouse."""
-    formato = "%d/%m %Hh" if horas > 48 else "%Hh%M"
+def agregar(pares, alvo):
+    """Reduz a série a `alvo` baldes, cada um com instante, média, mínimo e máximo.
 
-    return [
-        datetime.fromtimestamp(desde + (ate - desde) * i / max(quantos - 1, 1)).strftime(formato)
-        for i in range(quantos)
-    ]
-
-
-def agregar(valores, alvo):
-    """Reduz a série a `alvo` baldes, com média, mínimo e máximo de cada um.
+    Recebe pares `(ts, valor)` e devolve `(ts, media, minimo, maximo)`. O
+    instante acompanha o balde porque o eixo do gráfico é tempo: sem ele os
+    pontos ficam posicionais e os rótulos passam a ser inventados a partir da
+    janela pedida, que é o que acontecia antes — numa janela de 24 h com 12 h
+    de dados, o primeiro ponto era desenhado como se fosse de 12 h antes do
+    que era.
 
     Amostra crua em centenas de pontos vira faixa peluda e ilegível; média
     sozinha apagaria o pico, que é justamente o que importa em ruído. Por isso
-    cada balde carrega os três, e o gráfico desenha a média com o envelope
-    atrás.
+    cada balde carrega os três.
     """
-    if not valores:
+    if not pares:
         return []
 
-    passo = max(len(valores) // alvo, 1)
+    passo = max(len(pares) // alvo, 1)
     baldes = []
 
-    for inicio in range(0, len(valores), passo):
-        balde = valores[inicio:inicio + passo]
-        baldes.append((sum(balde) / len(balde), min(balde), max(balde)))
+    for inicio in range(0, len(pares), passo):
+        balde = pares[inicio:inicio + passo]
+        valores = [v for _, v in balde]
+        instante = sum(t for t, _ in balde) // len(balde)
+        baldes.append((instante, sum(valores) / len(valores), min(valores), max(valores)))
 
     return baldes
 
@@ -454,10 +452,14 @@ def montar(horas: int = 24) -> dict:
     if ruido:
         atuais["ruido"] = ruido["laeq"]
 
+    # Pares (ts, valor): o instante vai junto até o gráfico. Antes só o valor
+    # seguia adiante e o eixo do tempo era reconstruído por regra de três sobre
+    # a janela pedida, o que desloca todo ponto quando a janela tem mais tempo
+    # do que dados.
     series = {
-        "temperatura": [linha["temperatura"] for linha in serie_ar],
-        "umidade": [linha["umidade"] for linha in serie_ar],
-        "ruido": [linha["laeq"] for linha in serie_ruido],
+        "temperatura": [(l["ts"], l["temperatura"]) for l in serie_ar],
+        "umidade": [(l["ts"], l["umidade"]) for l in serie_ar],
+        "ruido": [(l["ts"], l["laeq"]) for l in serie_ruido],
     }
 
     # O rótulo do filtro quando o período é um dos oferecidos; a duração por
@@ -482,19 +484,17 @@ def montar(horas: int = 24) -> dict:
         if nivel and fresco:
             niveis.append(nivel)
 
-        janela_min, janela_max = _janela(chave, series[chave])
+        valores = [v for _, v in series[chave]]
+        janela_min, janela_max = _janela(chave, valores)
 
-        # Os rótulos derivam da contagem real de baldes: `agregar` arredonda
-        # para cima, então fixar 96 desalinharia o eixo dos dados.
         pontos = agregar(series[chave], 96)
-        marcas = _marcas_por_ponto(desde, ate, horas, len(pontos))
 
         blocos.append({
             "chave": chave,
             # Alternativa de texto do gráfico. O canvas anunciava como imagem
             # com rótulo e nada mais: para quem usa leitor de tela, o histórico
             # — que é o produto — era inaudível.
-            "resumo_serie": _resumo_da_serie(series[chave], periodo_por_extenso, d),
+            "resumo_serie": _resumo_da_serie(valores, periodo_por_extenso, d),
             "nome": d["nome"],
             "curto": d["curto"],
             "artigo": d["artigo"],
@@ -507,9 +507,18 @@ def montar(horas: int = 24) -> dict:
             # (janela, faixas, limites) e o navegador cuida da interação, que
             # é o que o SVG estático não tinha.
             "grafico": {
-                "rotulos": marcas,
-                "pontos": [{"m": round(m, 2), "n": round(n, 2), "x": round(x, 2)}
-                           for m, n, x in pontos],
+                # Cada ponto no seu instante, em milissegundos, que é o que o
+                # eixo do tempo do cliente consome. `t` é a hora real do
+                # balde, não uma posição deduzida da janela.
+                "pontos": [{"t": t * 1000, "m": round(m, 2),
+                            "n": round(n, 2), "x": round(x, 2)}
+                           for t, m, n, x in pontos],
+                # A janela pedida, para o eixo mostrar o período inteiro. Com
+                # menos dados do que período, o vazio fica visível em vez de a
+                # série ser esticada para preencher.
+                "desde": desde * 1000,
+                "ate": ate * 1000,
+                "dias": horas > 48,
                 "ymin": janela_min,
                 "ymax": janela_max,
                 "passo": 5 if (janela_max - janela_min) <= 45 else 10,

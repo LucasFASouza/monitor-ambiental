@@ -93,6 +93,20 @@
 
   /* A calha precisa caber o rótulo mais largo, que muda por grandeza:
      "25 °C" e "65 dB(A)" não medem o mesmo. */
+  /* O eixo X é tempo, não posição. Formatar aqui e não por biblioteca de data
+     evita vendorizar um adaptador só para escrever "18h27". */
+  const doisDigitos = (n) => String(n).padStart(2, "0");
+
+  // Vírgula decimal, como no resto da página.
+  const numero = (n) => String(n).replace(".", ",");
+
+  const instante = (ms, comData) => {
+    const q = new Date(ms);
+    return comData
+      ? `${doisDigitos(q.getDate())}/${doisDigitos(q.getMonth() + 1)} ${doisDigitos(q.getHours())}h`
+      : `${doisDigitos(q.getHours())}h${doisDigitos(q.getMinutes())}`;
+  };
+
   const regua = document.createElement("canvas").getContext("2d");
   const larguraDoRotulo = (texto) => {
     regua.font = `13px ${fonte}`;
@@ -105,14 +119,14 @@
     const telas = document.querySelectorAll(`canvas[data-grafico="${chave}"]`);
     if (!telas.length) return;
 
-    const medias = d.pontos.map((p) => p.m);
-    const minimos = d.pontos.map((p) => p.n);
-    const maximos = d.pontos.map((p) => p.x);
+    const serie = (campo) => d.pontos.map((p) => ({ x: p.t, y: p[campo] }));
+    const medias = serie("m");
+    const minimos = serie("n");
+    const maximos = serie("x");
 
     return [...telas].map((tela) => new Chart(tela, {
       type: "line",
       data: {
-        labels: d.rotulos,
         datasets: [
           // O envelope são duas séries sem traço, preenchidas uma até a outra.
           { data: maximos, borderWidth: 0, pointRadius: 0, fill: "+1",
@@ -152,24 +166,41 @@
             // Só a média abre a dica; mínimo e máximo entram no corpo dela.
             filter: (item) => item.datasetIndex === 2,
             callbacks: {
+              title: (itens) => instante(itens[0].parsed.x, DADOS[chave].dias),
               label: (item) => {
                 const atual = DADOS[chave];
                 const p = atual.pontos[item.dataIndex];
                 if (!p) return "";
-                return [
-                  `${p.m} ${atual.unidade}`,
-                  `variou de ${p.n} a ${p.x} no intervalo`,
-                ];
+                const linhas = [`${numero(p.m)} ${atual.unidade}`];
+                // Balde de uma leitura só não variou: "de 19,5 a 19,5" é ruído.
+                if (p.n !== p.x) {
+                  linhas.push(`variou de ${numero(p.n)} a ${numero(p.x)} no intervalo`);
+                }
+                return linhas;
               },
             },
           },
         },
         scales: {
+          /* Linear sobre o instante, não categórico sobre o índice. Com índice,
+             uma janela de 24 h com 12 h de dados desenhava os pontos espalhados
+             pelas 24 h e rotulava o primeiro como se fosse de 12 h antes do que
+             era. Os limites são a janela pedida: faltando dados, o vazio
+             aparece em vez de a série ser esticada para preencher. */
           x: {
+            type: "linear",
+            min: d.desde,
+            max: d.ate,
             grid: { display: false },
             border: { color: cor("--regua") },
-            ticks: { color: cor("--meio"), font: { family: fonte, size: 13 },
-                     maxTicksLimit: 6, maxRotation: 0, autoSkip: true },
+            ticks: {
+              color: cor("--meio"),
+              font: { family: fonte, size: 13 },
+              maxTicksLimit: 6,
+              maxRotation: 0,
+              autoSkip: true,
+              callback: (v) => instante(v, d.dias),
+            },
           },
           y: {
             min: d.ymin,
@@ -296,10 +327,12 @@
       DADOS[chave] = d;
 
       for (const gr of graficos[chave] || []) {
-        gr.data.labels = d.rotulos;
-        gr.data.datasets[0].data = d.pontos.map((p) => p.x);
-        gr.data.datasets[1].data = d.pontos.map((p) => p.n);
-        gr.data.datasets[2].data = d.pontos.map((p) => p.m);
+        const par = (campo) => d.pontos.map((p) => ({ x: p.t, y: p[campo] }));
+        gr.data.datasets[0].data = par("x");
+        gr.data.datasets[1].data = par("n");
+        gr.data.datasets[2].data = par("m");
+        gr.options.scales.x.min = d.desde;
+        gr.options.scales.x.max = d.ate;
         gr.options.scales.y.min = d.ymin;
         gr.options.scales.y.max = d.ymax;
         gr.options.scales.y.ticks.stepSize = d.passo;

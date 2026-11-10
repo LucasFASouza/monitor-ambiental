@@ -263,6 +263,12 @@ calha à direita com o próprio valor e a unidade — "25 °C" e "18 °C", "60 %
 "40 %", "65 dB(A)" e "45 dB(A)"; eixo do tempo embaixo; envelope de mínimo e
 máximo por balde; e a média por cima de tudo.
 
+**O eixo do tempo é tempo, não posição.** Cada ponto é desenhado no instante em
+que foi medido, e os limites do eixo são o período pedido. Faltando dados, o
+vazio aparece onde ele está, em vez de a série ser esticada para preencher a
+janela — que era o que acontecia quando os pontos eram posicionais e os rótulos
+vinham de regra de três sobre o período.
+
 As réguas têm duas camadas. As bordas do recomendado aparecem sempre. As bordas
 do vermelho — 16 e 28 °C, 30 e 70 % — só entram quando a faixa vermelha está em
 vista, pela mesma razão que ela: fora disso coincidem com os limites da janela e
