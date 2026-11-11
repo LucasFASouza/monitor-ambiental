@@ -43,14 +43,18 @@ SP = timezone(timedelta(hours=-3))
 # com sensor nenhum.
 
 TEXTURA = {
-    # 96,3% dos passos minuto a minuto do DHT11 são exatamente zero: o sensor
-    # segura o valor e se move em degraus. Os degraus observados foram 0,1 a
-    # 1,1 °C, com desvio padrão de passo de 0,049.
-    "temp_passo_parado": 0.963,
-    "temp_degraus": [0.1, 0.1, 0.1, 0.2, 0.2, 0.3, 0.4, 0.5, 0.8],
-    # 95,2% de passos zero, e os degraus são meio ponto ou pontos inteiros.
-    "umid_passo_parado": 0.952,
-    "umid_degraus": [0.5, 1.0, 1.0, 1.0, 2.0, 3.0],
+    # O DHT11 não acompanha o ambiente continuamente: ele segura um valor e só
+    # mexe quando a diferença fica grande o bastante. Medido no aparelho real,
+    # 85% do tempo a temperatura está num platô de mais de uma hora, com platôs
+    # de até 9,1 h; na umidade são 59% do tempo, com platôs de até 8,1 h.
+    #
+    # Por isso o valor exibido é uma banda morta sobre o modelo, e não um
+    # sorteio a cada minuto. Sorteio produz uma curva lisa quantizada; banda
+    # morta produz platôs longos, que é o que o sensor faz.
+    "temp_limiar": 0.35,
+    "temp_degrau": 0.2,
+    "umid_limiar": 1.3,
+    "umid_degrau": 1.0,
     # O LAeq de 60 s mexe de verdade: desvio padrão de 4,76 dB de um minuto
     # para o outro, e 6,73 dB no nível.
     "ruido_passo_desvio": 4.76,
@@ -156,50 +160,53 @@ def _interno(quando: datetime, externo_t: float, externo_u: float,
              ocupacao: float, anterior: tuple[float, float] | None):
     """Temperatura e umidade dentro da sala.
 
-    Fora do horário do ar-condicionado a sala deriva na direção do externo,
-    bem amortecida — nos dados reais, oscilações externas de 10 a 14 °C viraram
-    0,8 a 1,6 °C lá dentro, cerca de dez vezes menos.
+    A sala NÃO segue o cosseno externo amortecido. Ela é controlada, e isso dá
+    uma forma diferente:
 
-    Com o ar ligado, a sala é puxada para o setpoint. Mas o ar tem limite: com
-    o escritório cheio e calor lá fora, a carga térmica das pessoas e dos
-    equipamentos ganha da máquina e a sala sobe acima dos 22 °C.
+    - com o ar ligado, a máquina segura o setpoint e a sala fica praticamente
+      plana. O que a tira dos 22 °C é a carga térmica que o ar não dá conta de
+      remover: gente e sol. Logo, a curva sobe em patamares conforme o
+      escritório enche, não conforme o sol anda;
+    - de madrugada o ar está desligado e a sala relaxa com constante de tempo
+      de horas. Nos dados reais ela ficou em 21,0 °C parada por oito horas
+      seguidas, com o lado de fora a 12 °C. Prédio tem massa.
+
+    Modelar isso como seno amortecido do externo produz exatamente a senoide
+    que não existe nos dados.
     """
     hora = quando.hour + quando.minute / 60
-    # O ar é de dia útil: num escritório formal ninguém climatiza sala vazia no
-    # sábado. É por isso que o fim de semana quente assa lá dentro.
     ar_ligado = AR_LIGA <= hora < AR_DESLIGA and quando.weekday() < 5
 
     if anterior is None:
-        return (AR_ALVO if ar_ligado else externo_t * 0.35 + 21.0,
-                max(35.0, min(75.0, externo_u * 0.45 + 28.0)))
+        return 22.5, 55.0
 
     temp, umid = anterior
 
-    # Carga térmica: cada pessoa aquece, e o sol de fora empurra junto. O
-    # acoplamento é forte o bastante para a terça cheia se separar da sexta
-    # vazia, que é justamente o que a demonstração precisa mostrar.
-    ganho_pessoas = 4.2 * ocupacao
-    ganho_externo = max(0.0, externo_t - AR_ALVO) * 0.16
-
     if ar_ligado:
-        # O ar persegue o alvo, mas só compensa parte da carga: com a sala
-        # cheia e calor lá fora, a máquina perde e a sala sobe dos 22 °C.
-        alvo = AR_ALVO + (ganho_pessoas + ganho_externo) * 0.52
-        temp += (alvo - temp) * 0.06
-    else:
-        # Sem ar, a sala caminha para o externo amortecido pela massa do
-        # prédio. O alvo tem de ficar ABAIXO do setpoint quando está frio lá
-        # fora, senão a madrugada sai mais quente que a tarde.
-        alvo = 21.0 + (externo_t - 20.0) * 0.28 + ganho_pessoas * 0.45
-        temp += (alvo - temp) * 0.015
+        # Carga térmica que a máquina precisa vencer. Ela dá conta de uma
+        # parte; o excedente é o que vira temperatura acima do setpoint.
+        carga = 3.0 * ocupacao + max(0.0, externo_t - 27.0) * 0.30
+        # O ar remove a maior parte da carga: um escritório formal cujo ar
+        # deixa a sala subir 4 °C acima do setpoint tem ar quebrado. O que
+        # sobra é 1 a 3 °C nos dias cheios e quentes, e nada nos vazios — é
+        # essa sobra que separa terça de sexta no gráfico.
+        folga = 1.2
+        alvo = AR_ALVO + max(0.0, carga - folga)
 
-    # O ar-condicionado desumidifica; as pessoas umidificam de volta.
-    if ar_ligado:
-        alvo_u = externo_u * 0.28 + 30.0 - 6.0 + 9.0 * ocupacao
-        umid += (alvo_u - umid) * 0.05
+        # Constante de tempo de ~25 min: o ar reage rápido, mas não instantâneo.
+        temp += (alvo - temp) * 0.04
+
+        # O ar desumidifica para um patamar próprio; as pessoas devolvem vapor.
+        alvo_u = 44.0 + 11.0 * ocupacao + max(0.0, externo_u - 80.0) * 0.10
+        umid += (alvo_u - umid) * 0.03
     else:
-        alvo_u = externo_u * 0.42 + 26.0
-        umid += (alvo_u - umid) * 0.012
+        # Relaxação lenta, com a massa do prédio segurando. O alvo fica perto
+        # do setpoint, não perto do externo: é o que os dados mostram.
+        alvo = 0.30 * externo_t + 0.70 * 21.3
+        temp += (alvo - temp) * 0.0030
+
+        alvo_u = 0.30 * externo_u + 0.70 * 56.0
+        umid += (alvo_u - umid) * 0.0030
 
     return temp, max(30.0, min(80.0, umid))
 
@@ -227,18 +234,21 @@ def _ruido_dba(quando: datetime, ocupacao: float) -> float:
 
 # --- grão: o que faz parecer sensor ------------------------------------------
 
-def _degrau(valor_alvo, valor_atual, parado, degraus, casas):
-    """Segura o valor e muda em degraus, como o DHT11 faz de verdade."""
-    if random.random() < parado:
-        return valor_atual
+def _mostrar(alvo, atual, limiar, degrau, casas):
+    """O valor que o sensor exibe: banda morta sobre o modelo.
 
-    delta = valor_alvo - valor_atual
-    if abs(delta) < 0.05:
-        return valor_atual
+    Só mexe quando o ambiente se afastou mais que `limiar` do que está escrito,
+    e aí anda um degrau. Com o modelo plano, o valor fica plano por horas — que
+    é o que o sensor real faz. Com o modelo em rampa, vira escada.
+    """
+    if atual is None:
+        return round(alvo, casas)
 
-    degrau = random.choice(degraus)
-    passo = math.copysign(min(degrau, abs(delta)), delta)
-    return round(valor_atual + passo, casas)
+    delta = alvo - atual
+    if abs(delta) < limiar:
+        return atual
+
+    return round(atual + math.copysign(degrau, delta), casas)
 
 
 def semear(desde: datetime, ate: datetime, semente: int = 20261102) -> tuple[int, int]:
@@ -261,13 +271,10 @@ def semear(desde: datetime, ate: datetime, semente: int = 20261102) -> tuple[int
         ocup = _ocupacao(quando.hour + quando.minute / 60, quando.weekday())
         estado = _interno(quando, ext_t, ext_u, ocup, estado)
 
-        if temp_vista is None:
-            temp_vista, umid_vista = round(estado[0], 1), round(estado[1])
-
-        temp_vista = _degrau(estado[0], temp_vista,
-                             TEXTURA["temp_passo_parado"], TEXTURA["temp_degraus"], 1)
-        umid_vista = _degrau(estado[1], umid_vista,
-                             TEXTURA["umid_passo_parado"], TEXTURA["umid_degraus"], 0)
+        temp_vista = _mostrar(estado[0], temp_vista,
+                              TEXTURA["temp_limiar"], TEXTURA["temp_degrau"], 1)
+        umid_vista = _mostrar(estado[1], umid_vista,
+                              TEXTURA["umid_limiar"], TEXTURA["umid_degrau"], 0)
 
         ar.append((int(quando.timestamp()), temp_vista, float(umid_vista)))
 
