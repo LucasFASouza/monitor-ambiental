@@ -43,21 +43,34 @@ SP = timezone(timedelta(hours=-3))
 # com sensor nenhum.
 
 TEXTURA = {
-    # O DHT11 não acompanha o ambiente continuamente: ele segura um valor e só
-    # mexe quando a diferença fica grande o bastante. Medido no aparelho real,
-    # 85% do tempo a temperatura está num platô de mais de uma hora, com platôs
-    # de até 9,1 h; na umidade são 59% do tempo, com platôs de até 8,1 h.
-    #
-    # Por isso o valor exibido é uma banda morta sobre o modelo, e não um
-    # sorteio a cada minuto. Sorteio produz uma curva lisa quantizada; banda
-    # morta produz platôs longos, que é o que o sensor faz.
-    "temp_limiar": 0.35,
-    "temp_degrau": 0.2,
-    "umid_limiar": 1.3,
-    "umid_degrau": 1.0,
-    # O LAeq de 60 s mexe de verdade: desvio padrão de 4,76 dB de um minuto
-    # para o outro, e 6,73 dB no nível.
-    "ruido_passo_desvio": 4.76,
+    # O DHT11 não acompanha o ambiente continuamente: segura um valor e só mexe
+    # quando a diferença fica grande. Medido no aparelho real, 85% do tempo a
+    # temperatura está num platô de mais de uma hora, com platôs de até 9,1 h.
+    "temp_limiar": 0.46,
+    "umid_limiar": 1.7,
+
+    # O ambiente NÃO é monotônico: 57% dos movimentos da temperatura real
+    # invertem a direção do anterior, e 56% dos da umidade. Isso não é erro de
+    # medição — é compressor ciclando, porta abrindo, gente passando perto do
+    # sensor. Entra como uma oscilação correlacionada de ~20 min somada ao
+    # modelo, não como ruído branco: ruído branco dispara a banda morta a toda
+    # hora e destrói o platô; oscilação lenta atravessa a banda raramente, e
+    # quando volta, volta pelo outro lado.
+    "oscilacao_persistencia": 0.95,      # ~20 min de constante de tempo
+    "temp_oscilacao": 0.30,              # desvio estacionário, em °C
+    "umid_oscilacao": 1.10,              # em pontos de umidade
+
+    # A grade em que o valor pousa. O sensor real reporta em décimos de grau e
+    # em pontos inteiros de umidade.
+    "temp_grade": 0.1,
+    "umid_grade": 1.0,
+
+    # O LAeq varia MUITO mais com gente na sala. Aplicar um desvio único em
+    # todas as horas enche a madrugada de ruído que prédio fechado não tem.
+    # Medido: madrugada 2,23 dB de passo, manhã 4,38, tarde 6,25, noite 5,07.
+    "ruido_passo_vazio": 2.23,
+    "ruido_passo_cheio": 6.25,
+
     # O máximo da janela fica em média 7,6 dB acima do LAeq, e o mínimo 5,9 dB
     # abaixo. São as duas pontas do envelope que o gráfico desenha.
     "ruido_max_acima": (7.6, 3.4),
@@ -216,9 +229,10 @@ def _ruido_dba(quando: datetime, ocupacao: float) -> float:
     hora = quando.hour + quando.minute / 60
     ar_ligado = AR_LIGA <= hora < AR_DESLIGA and quando.weekday() < 5
 
-    # Sala vazia e silenciosa de madrugada; com o ar ligado, a própria máquina
-    # já põe um piso de ventilação.
-    base = 41.0 if ar_ligado else 33.0
+    # Prédio fechado de madrugada é silencioso de verdade: nos dados reais o
+    # piso noturno fica perto de 29 dB(A). Com o ar ligado, a própria máquina
+    # põe um piso de ventilação bem acima disso.
+    base = 41.0 if ar_ligado else 29.5
 
     # Gente conversando e teclando. A relação não é linear: dobrar o número de
     # pessoas não dobra o nível, soma uns 3 dB.
@@ -234,21 +248,24 @@ def _ruido_dba(quando: datetime, ocupacao: float) -> float:
 
 # --- grão: o que faz parecer sensor ------------------------------------------
 
-def _mostrar(alvo, atual, limiar, degrau, casas):
-    """O valor que o sensor exibe: banda morta sobre o modelo.
+def _mostrar(lido, atual, limiar, grade, casas):
+    """O valor que o sensor exibe: banda morta, e pouso na grade da leitura.
 
-    Só mexe quando o ambiente se afastou mais que `limiar` do que está escrito,
-    e aí anda um degrau. Com o modelo plano, o valor fica plano por horas — que
-    é o que o sensor real faz. Com o modelo em rampa, vira escada.
+    Quando a leitura se afasta mais que `limiar`, o valor salta direto para a
+    grade da leitura — não um degrau na direção dela. A diferença importa: com
+    o degrau, o valor fica sempre recentrado e só anda numa direção, o que dá
+    escada limpa demais. Pousando na grade, se a leitura estiver passeando
+    perto de uma fronteira ele vai e volta, que é a rajada curta de ida e volta
+    que o sensor real mostra — mediana de platô de 2 min, mas 85% do tempo em
+    platôs de mais de uma hora.
     """
     if atual is None:
-        return round(alvo, casas)
+        return round(lido, casas)
 
-    delta = alvo - atual
-    if abs(delta) < limiar:
+    if abs(lido - atual) < limiar:
         return atual
 
-    return round(atual + math.copysign(degrau, delta), casas)
+    return round(round(lido / grade) * grade, casas)
 
 
 def semear(desde: datetime, ate: datetime, semente: int = 20261102) -> tuple[int, int]:
@@ -262,6 +279,13 @@ def semear(desde: datetime, ate: datetime, semente: int = 20261102) -> tuple[int
 
     ar, ruido = [], []
     estado = None
+
+    # Inovação que leva a oscilação ao desvio estacionário pedido.
+    persistencia = TEXTURA["oscilacao_persistencia"]
+    fator = math.sqrt(1 - persistencia ** 2)
+    inov_t = TEXTURA["temp_oscilacao"] * fator
+    inov_u = TEXTURA["umid_oscilacao"] * fator
+    osc_t = osc_u = 0.0
     temp_vista = umid_vista = None
     laeq_anterior = None
 
@@ -271,10 +295,17 @@ def semear(desde: datetime, ate: datetime, semente: int = 20261102) -> tuple[int
         ocup = _ocupacao(quando.hour + quando.minute / 60, quando.weekday())
         estado = _interno(quando, ext_t, ext_u, ocup, estado)
 
-        temp_vista = _mostrar(estado[0], temp_vista,
-                              TEXTURA["temp_limiar"], TEXTURA["temp_degrau"], 1)
-        umid_vista = _mostrar(estado[1], umid_vista,
-                              TEXTURA["umid_limiar"], TEXTURA["umid_degrau"], 0)
+        # Oscilação do próprio ambiente, correlacionada no tempo.
+        osc_t = persistencia * osc_t + random.gauss(0, inov_t)
+        osc_u = persistencia * osc_u + random.gauss(0, inov_u)
+
+        lido_t = estado[0] + osc_t
+        lido_u = estado[1] + osc_u
+
+        temp_vista = _mostrar(lido_t, temp_vista,
+                              TEXTURA["temp_limiar"], TEXTURA["temp_grade"], 1)
+        umid_vista = _mostrar(lido_u, umid_vista,
+                              TEXTURA["umid_limiar"], TEXTURA["umid_grade"], 0)
 
         ar.append((int(quando.timestamp()), temp_vista, float(umid_vista)))
 
@@ -283,9 +314,13 @@ def semear(desde: datetime, ate: datetime, semente: int = 20261102) -> tuple[int
         alvo = _ruido_dba(quando, ocup)
         if laeq_anterior is None:
             laeq_anterior = alvo
+        # Sala vazia quase não varia; sala cheia varia muito. Interpolar entre
+        # os dois desvios medidos é o que tira o chiado da madrugada.
+        desvio = (TEXTURA["ruido_passo_vazio"]
+                  + (TEXTURA["ruido_passo_cheio"] - TEXTURA["ruido_passo_vazio"]) * ocup)
         laeq = laeq_anterior + (alvo - laeq_anterior) * 0.22 + \
-            random.gauss(0, TEXTURA["ruido_passo_desvio"] * 0.92)
-        laeq = max(28.0, min(78.0, laeq))
+            random.gauss(0, desvio * 0.92)
+        laeq = max(26.0, min(78.0, laeq))
         laeq_anterior = laeq
 
         acima = max(1.0, random.gauss(*TEXTURA["ruido_max_acima"]))
