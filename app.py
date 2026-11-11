@@ -401,8 +401,8 @@ def pagina_sistema():
         "offset": _virgula(f"{offset:+.2f}" if offset != database.OFFSET_DE_CATALOGO
                            else f"{offset:.1f}"),
         "ultima": None if ultima is None else {
-            "referencia_dba": _virgula(ultima["referencia_dba"]),
-            "medido_dbfs": _virgula(ultima["medido_dbfs"]),
+            "referencia_dba": _virgula(f"{ultima['referencia_dba']:.1f}"),
+            "medido_dbfs": _virgula(f"{ultima['medido_dbfs']:.1f}"),
             "minutos": ultima["minutos"],
             "quando": datetime.fromtimestamp(ultima["ts"]).strftime("%d/%m/%Y às %Hh%M"),
             "observacao": ultima["observacao"],

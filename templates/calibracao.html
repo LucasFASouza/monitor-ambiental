@@ -54,9 +54,9 @@
         {% if estado.ultima %}
           <dl class="ficha">
             <dt>Medidor de referência mostrou</dt>
-            <dd>{{ (estado.ultima.referencia_dba|string)|replace('.', ',') }} dB(A)</dd>
+            <dd>{{ ('%.1f'|format(estado.ultima.referencia_dba))|replace('.', ',') }} dB(A)</dd>
             <dt>Este monitor mediu</dt>
-            <dd>{{ (estado.ultima.medido_dbfs|string)|replace('.', ',') }} dBFS</dd>
+            <dd>{{ ('%.1f'|format(estado.ultima.medido_dbfs))|replace('.', ',') }} dBFS</dd>
             <dt>Janela comparada</dt>
             <dd>{{ estado.ultima.minutos }} min, {{ estado.ultima.janelas }} leituras</dd>
             <dt>Quando</dt>

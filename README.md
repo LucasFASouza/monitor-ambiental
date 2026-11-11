@@ -25,12 +25,33 @@ INMP441  ┘
 | `teste_dht.py` | Teste isolado do sensor, sem banco e sem Flask |
 | `templates/` | As três páginas: painel, sistema e calibração |
 | `deploy/` | Units de systemd para os dois coletores e o dashboard |
-| `scripts/` | Semear histórico simulado para trabalhar sem o Raspberry |
+| `scripts/` | Semear histórico simulado: `semear.py` para trabalhar sem o Raspberry, `semear_demo.py` para a demonstração de escritório |
 
 São três processos independentes: o coletor de ar, o coletor de ruído e o
 dashboard. Se o Flask cair, a coleta continua. Se um coletor parar, o outro
 segue, e o dashboard mostra os dados que existem avisando que estão velhos, em
 vez de exibir um número antigo como se fosse atual.
+
+## Demonstração
+
+Um histórico simulado de escritório formal, para mostrar o produto sem depender
+de coleta real: ar-condicionado das 6h às 19h em 22 °C, chegada entre 8h e 10h,
+almoço entre 12h e 14h, saída por volta das 18h30. Terça e quinta cheios,
+quarta intermediária, segunda e sexta vazios; fim de semana sem ar.
+
+```bash
+MONITOR_DB=data/demo.db python scripts/semear_demo.py
+MONITOR_DB=data/demo.db MONITOR_PORTA=5088 python app.py
+```
+
+Banco e porta separados de propósito. O script se recusa a rodar se o caminho
+do banco não contiver "demo", porque os registros gerados são indistinguíveis
+dos reais depois de gravados.
+
+O tempo externo é o de Mogi das Cruzes, e a aleatoriedade não é arbitrária: a
+textura estatística — quanto o sensor segura o valor, de quanto são os degraus,
+qual o desvio do passo do LAeq — sai medida dos dados reais do aparelho. Ver
+`TEXTURA` no script.
 
 ## Rodar sem o Raspberry
 

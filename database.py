@@ -328,6 +328,9 @@ def registrar_calibracao(
     observacao: str | None = None,
 ) -> float:
     """Grava uma calibração e passa a usar o offset dela. Devolve o offset."""
+    # Os dois arredondados: antes só o offset era, e o medido entrava cru.
+    # Um float como -51.099999999999994 chegava inteiro na ficha.
+    medido_dbfs = round(medido_dbfs, 2)
     offset = round(referencia_dba - medido_dbfs, 2)
 
     with conectar() as conexao:
