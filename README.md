@@ -61,19 +61,28 @@ está no banco; isto é uma vitrine.
 Precisa de chave de deploy com escrita no GitHub e do remoto por SSH — com
 HTTPS o push pede senha e o timer trava. Teste à mão antes de habilitar.
 
-## Demonstração calibrada contra o sensor real
+## Demonstração transplantada do sensor real
 
-`scripts/semear_realista.py` gera sete dias cujos números saem de uma exportação
-real de 24 h do aparelho — 704 leituras de ar e 662 janelas de ruído — estendida
-pelo tempo de São Paulo. O dia 09/11 tem leitura real de dentro e de fora ao
-mesmo tempo, e é dele que sai a relação entre os dois.
+`scripts/semear_realista.py` gera sete dias **transplantando** as leituras reais
+do aparelho, em vez de modelar textura. A base é uma exportação de 24 h — 704
+leituras de ar e 662 janelas de ruído do dia 09/11.
 
 ```bash
 MONITOR_DB=data/demo.db python scripts/semear_realista.py
 MONITOR_DB=data/demo.db MONITOR_PORTA=5088 python app.py
 ```
 
-O que foi medido e aplicado está em `MEDIDO`, no topo do script.
+Para o ar, transplantam-se os **passos** minuto a minuto, não os valores: platô,
+degrau, reversão e agrupamento vêm de graça, porque são os reais. Os blocos são
+espelhados meio a meio, senão a deriva do dia de origem se acumula. O clima de
+São Paulo entra só na linha de base de cada dia.
+
+Para o ruído, transplantam-se as **janelas inteiras**, casadas por nível de
+atividade — a assimetria, a cauda e os picos isolados já vêm nelas.
+
+O trecho que o arquivo cobre entra verbatim. Madrugada e manhã não têm leitura
+de referência, porque o arquivo começa às 12h: usam as janelas mais calmas que
+existem, abatidas pelos 7 dB que separam madrugada de noite no aparelho.
 
 ## Demonstração
 
