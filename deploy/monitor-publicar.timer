@@ -1,0 +1,18 @@
+# Dispara a publicação a cada 30 minutos.
+
+[Unit]
+Description=Monitor Ambiental - publicar a cada 30 min
+
+[Timer]
+# A primeira sai 5 min depois do boot, para não disputar com os coletores
+# subindo nem com a rede ainda negociando.
+OnBootSec=5min
+OnUnitActiveSec=30min
+
+# Sem isto, um aparelho que ficou desligado publica assim que liga e depois
+# segue o relógio; com isto, o atraso acumulado não vira uma rajada.
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

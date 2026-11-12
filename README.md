@@ -32,6 +32,35 @@ dashboard. Se o Flask cair, a coleta continua. Se um coletor parar, o outro
 segue, e o dashboard mostra os dados que existem avisando que estão velhos, em
 vez de exibir um número antigo como se fosse atual.
 
+## Publicar uma cópia estática
+
+Uma cópia somente leitura do painel, para acesso fora da rede local sem expor o
+aparelho. Não é permissão, é construção: são arquivos, não há servidor, e não
+existe rota de calibração para proteger porque não existe rota.
+
+```bash
+python scripts/publicar.py --saida publicado   # gera
+scripts/publicar.sh                            # gera e publica no gh-pages
+```
+
+O renderizador usa o cliente de teste do Flask e trata o HTML: tira a entrada
+de calibração e o botão de exportar, que num arquivo estático não levam a lugar
+nenhum, tira o ciclo de atualização que buscaria `/api/painel`, reescreve os
+caminhos para relativos e carimba a data de geração. Publica 24 horas, 7 dias e
+a página de sistema, com 278 KB no total — dos quais 204 são o Chart.js, que o
+navegador guarda em cache.
+
+Cada remoção é feita por marcador exato e conferida. Se um template mudar de
+forma, o script falha em vez de publicar uma página quebrada em silêncio.
+
+No aparelho, `deploy/monitor-publicar.timer` dispara a cada 30 minutos. O
+branch publicado tem sempre um commit só, por push forçado: a cada 30 minutos,
+guardar histórico seriam dezenas de megabytes por mês. O histórico dos dados
+está no banco; isto é uma vitrine.
+
+Precisa de chave de deploy com escrita no GitHub e do remoto por SSH — com
+HTTPS o push pede senha e o timer trava. Teste à mão antes de habilitar.
+
 ## Demonstração
 
 Um histórico simulado de escritório formal, para mostrar o produto sem depender

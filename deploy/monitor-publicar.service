@@ -1,0 +1,26 @@
+# Publica a cópia estática do painel no GitHub Pages.
+#
+#   sudo cp deploy/monitor-publicar.* /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now monitor-publicar.timer
+#   systemctl list-timers monitor-publicar
+#
+# Antes de habilitar: o remoto precisa ser SSH e a chave de deploy precisa
+# estar no GitHub com permissão de escrita. Teste à mão primeiro, com
+# `sudo -u piuser scripts/publicar.sh`, senão o timer falha em silêncio.
+
+[Unit]
+Description=Monitor Ambiental - publicar cópia estática
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=piuser
+WorkingDirectory=/home/piuser/monitor-ambiental
+ExecStart=/home/piuser/monitor-ambiental/scripts/publicar.sh
+
+Environment=PYTHONUNBUFFERED=1
+
+# Publicação é oportunista: se a internet estiver fora, a próxima tentativa
+# resolve. Não faz sentido reiniciar em laço nem alarmar.
