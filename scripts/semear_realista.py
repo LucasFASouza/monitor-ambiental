@@ -59,10 +59,20 @@ INTERNA_UMID = 53.4
 SENSIBILIDADE_TEMP = 0.35
 SENSIBILIDADE_UMID = -0.8
 
-# Madrugada profunda é mais silenciosa que qualquer janela do arquivo, que só
-# começa às 12h. Medido no aparelho em outra ocasião: 01h a 05h ficam cerca de
-# 7 dB abaixo da noite de 20h a 23h.
-ABATIMENTO_MADRUGADA = 7.0
+# Ajustes de apresentação, não medições.
+NOITE_CENTRO = 12.5          # dB(A) que a madrugada deve exibir
+NOITE_ESPALHAMENTO = 0.35    # quanto da variação real sobrevive
+
+# As transições são longas de propósito: o escritório não esvazia às 20h em
+# ponto. O volume começa a cair quando as primeiras pessoas saem e só chega ao
+# fundo quando a última fechou a porta.
+CAI_INICIO, CAI_FIM = 18.5, 21.0
+SOBE_INICIO, SOBE_FIM = 6.0, 8.5
+
+# Teto da temperatura em todo o período. A série é deslocada, não comprimida:
+# comprimir achataria a textura transplantada, que é justamente o que se quer
+# preservar.
+TEMPERATURA_MAXIMA = 24.0
 
 
 def carregar(caminho: Path):
@@ -108,13 +118,58 @@ def nivel_da_hora(quando: datetime) -> str:
     return "baixo"
 
 
-def abatimento(quando: datetime) -> float:
+def _suave(x: float) -> float:
+    """Degrau suavizado: sem canto na entrada nem na saída da transição."""
+    x = max(0.0, min(1.0, x))
+    return x * x * (3 - 2 * x)
+
+
+def atividade(quando: datetime) -> float:
+    """Quanto a sala está viva, de 0 de madrugada a 1 em pleno expediente.
+
+    A queda e a subida levam mais de duas horas cada. Com corte seco o gráfico
+    ganha um penhasco que nenhum escritório produz: as pessoas vão saindo, não
+    desaparecem todas no mesmo minuto.
+    """
+    if quando.weekday() >= 5:
+        return 0.06
+
     hora = quando.hour + quando.minute / 60
-    if 1.0 <= hora < 5.0:
-        return ABATIMENTO_MADRUGADA
-    if hora < 1.0 or 5.0 <= hora < 6.0:
-        return ABATIMENTO_MADRUGADA * 0.5
+
+    if hora < SOBE_INICIO:
+        return 0.0
+    if hora < SOBE_FIM:
+        return _suave((hora - SOBE_INICIO) / (SOBE_FIM - SOBE_INICIO))
+    if hora < CAI_INICIO:
+        return 1.0
+    if hora < CAI_FIM:
+        return 1.0 - _suave((hora - CAI_INICIO) / (CAI_FIM - CAI_INICIO))
     return 0.0
+
+
+def balde_da_hora(a: float) -> str:
+    """O balde de onde sortear a janela, pelo nível de atividade."""
+    if a >= 0.66:
+        return "alto"
+    if a >= 0.25:
+        return "medio"
+    return "baixo"
+
+
+def misturar(janela, a: float, media_baixo: float):
+    """Leva a janela real do nível de dia para o de noite, conforme a atividade.
+
+    Em a=1 sai a janela como o sensor mediu; em a=0 sai recentrada na faixa
+    noturna escolhida, com a variação encolhida. No meio, interpola — e é a
+    interpolação que faz a queda das 18h30 às 21h parecer gente indo embora.
+    """
+    laeq, lamax, lamin = janela[1], janela[2], janela[3]
+
+    noite = NOITE_CENTRO + (laeq - media_baixo) * NOITE_ESPALHAMENTO
+    alvo = noite + (laeq - noite) * a
+
+    escala = NOITE_ESPALHAMENTO + (1.0 - NOITE_ESPALHAMENTO) * a
+    return alvo, alvo + (lamax - laeq) * escala, alvo - (laeq - lamin) * escala
 
 
 def base_do_dia(quando: datetime):
@@ -140,6 +195,8 @@ def semear(csv_real: Path, dias: int, semente: int = 20261112):
 
     print(f"Arquivo real: {len(ar_real)} leituras de ar, {len(ruido_real)} janelas "
           f"de ruído, de {ar_real[0][0]:%d/%m %H:%M} a {ar_real[-1][0]:%d/%m %H:%M}")
+    media_baixo = sum(r[1] for r in baldes["baixo"]) / len(baldes["baixo"])
+
     print(f"  baldes de ruído: alto {len(baldes['alto'])}, "
           f"médio {len(baldes['medio'])}, baixo {len(baldes['baixo'])}")
 
@@ -217,18 +274,27 @@ def semear(csv_real: Path, dias: int, semente: int = 20261112):
         ar.append((int(quando.timestamp()), temp, umid))
 
         if quando in reais_ruido:
-            laeq, lamax, lamin = reais_ruido[quando]
+            r = reais_ruido[quando]
+            laeq, lamax, lamin = misturar(
+                (quando, r[0], r[1], r[2]), atividade(quando), media_baixo)
             usados_ruido += 1
         else:
-            janela = random.choice(baldes[nivel_da_hora(quando)])
-            corte = abatimento(quando)
-            laeq, lamax, lamin = janela[1] - corte, janela[2] - corte, janela[3] - corte
+            a = atividade(quando)
+            janela = random.choice(baldes[balde_da_hora(a)])
+            laeq, lamax, lamin = misturar(janela, a, media_baixo)
 
         ruido.append((int(quando.timestamp()),
                       round(laeq - 99.1, 2), round(lamax - 99.1, 2),
                       round(max(lamin, 12.0) - 99.1, 2)))
 
         quando += timedelta(minutes=1)
+
+    # Teto da temperatura: desloca a série inteira, não comprime, para não
+    # achatar a textura transplantada.
+    pico = max(x[1] for x in ar)
+    if pico > TEMPERATURA_MAXIMA:
+        recuo = round(pico - TEMPERATURA_MAXIMA, 1)
+        ar = [(ts, round(t - recuo, 1), u) for ts, t, u in ar]
 
     with conexao:
         conexao.executemany(
