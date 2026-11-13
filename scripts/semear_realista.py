@@ -74,6 +74,10 @@ SOBE_INICIO, SOBE_FIM = 6.0, 8.5
 # preservar.
 TEMPERATURA_MAXIMA = 24.0
 
+# O mesmo ar-condicionado que segura a temperatura condensa água na serpentina
+# e devolve a sala mais seca. Pontos de umidade a descontar.
+SECAGEM_AR = 7.0
+
 
 def carregar(caminho: Path):
     """Lê o arquivo real e devolve as séries de ar e as janelas de ruído."""
@@ -292,9 +296,8 @@ def semear(csv_real: Path, dias: int, semente: int = 20261112):
     # Teto da temperatura: desloca a série inteira, não comprime, para não
     # achatar a textura transplantada.
     pico = max(x[1] for x in ar)
-    if pico > TEMPERATURA_MAXIMA:
-        recuo = round(pico - TEMPERATURA_MAXIMA, 1)
-        ar = [(ts, round(t - recuo, 1), u) for ts, t, u in ar]
+    recuo = round(max(0.0, pico - TEMPERATURA_MAXIMA), 1)
+    ar = [(ts, round(t - recuo, 1), round(u - SECAGEM_AR, 1)) for ts, t, u in ar]
 
     with conexao:
         conexao.executemany(
