@@ -100,6 +100,15 @@ TETO_DO_BALDE = 50.0
 # janela não saírem iguais ao décimo de decibel.
 JITTER_JANELA = 0.8
 
+# O offset da calibração de 09/11. O banco guarda dBFS cru e a leitura soma o
+# offset, então o gerador faz o caminho inverso antes de gravar.
+OFFSET_DBFS = 99.1
+
+# Onde fica o recuo da temperatura, para a continuação ao vivo aplicar o mesmo
+# que o semeador aplicou. Sem isso, o primeiro minuto ao vivo daria um degrau
+# do tamanho do recuo.
+CHAVE_RECUO = "demo_recuo_temp"
+
 
 def carregar(caminho: Path):
     """Lê o arquivo real e devolve as séries de ar e as janelas de ruído."""
@@ -241,19 +250,128 @@ def base_do_dia(quando: datetime):
             INTERNA_UMID + desvio * SENSIBILIDADE_UMID)
 
 
+class Gerador:
+    """O passo de um minuto, com o estado que ele carrega de um para o outro.
+
+    É classe porque tem dois usuários: o semeador, que roda sete dias de uma
+    vez, e a continuação ao vivo, que roda um minuto por vez e precisa retomar
+    de onde o minuto anterior parou. Era um laço só, dentro de `semear`;
+    duplicá-lo daria duas séries com texturas diferentes no mesmo banco, que é
+    exatamente o tipo de costura que se vê no gráfico.
+    """
+
+    def __init__(self, ar_real, ruido_real, picos, temp=None, umid=None):
+        self.passos = passos_reais(ar_real)
+        self.baldes = baldes_de_ruido(ruido_real)
+        self.media_baixo = (sum(r[1] for r in self.baldes["baixo"])
+                            / len(self.baldes["baixo"]))
+
+        self.reais_ar = {q: (t, u) for q, t, u in ar_real}
+        self.reais_ruido = {q: (a, b, c) for q, a, b, c in ruido_real}
+        self.picos = picos
+
+        self.temp, self.umid = temp, umid
+
+        # O puxão para a linha de base se acumula aqui e só vira movimento
+        # quando alcança um degrau inteiro. Aplicado direto no valor, ele
+        # somava um pouquinho a cada minuto e o arredondamento transformava
+        # isso em degraus que o sensor nunca deu: a umidade passava a mexer em
+        # 18% dos minutos contra 9,5% reais, e as reversões caíam pela metade.
+        self.erro_t = self.erro_u = 0.0
+
+        self.i_passo = random.randrange(len(self.passos))
+        self.restante, self.sinal = 0, 1
+
+        self.usados_ar = self.usados_ruido = 0
+
+    def _ar(self, quando: datetime):
+        base_t, base_u = base_do_dia(quando)
+
+        if quando in self.reais_ar:
+            self.temp, self.umid = self.reais_ar[quando]
+            self.usados_ar += 1
+            return self.temp, self.umid
+
+        if self.temp is None:
+            self.temp, self.umid = base_t, base_u
+
+        # Blocos contíguos de passos reais: dentro do bloco, segue o que o
+        # sensor fez; ao fim dele, sorteia outro ponto de partida.
+        if self.restante <= 0:
+            self.i_passo = random.randrange(len(self.passos))
+            self.restante = random.randint(40, 180)
+            # Espelhar o bloco, meio a meio. Os passos reais têm deriva
+            # líquida — o arquivo é de um dia em que a sala caiu de 23,4 para
+            # 21,8 °C — e reaplicá-los sempre na mesma direção faz a série
+            # afundar. Invertendo metade dos blocos, a deriva esperada vira
+            # zero e a textura fica intacta: são os mesmos degraus, as mesmas
+            # rajadas, as mesmas reversões.
+            self.sinal = random.choice((1, -1))
+
+        dt, du = self.passos[self.i_passo]
+        dt, du = self.sinal * dt, self.sinal * du
+        self.i_passo = (self.i_passo + 1) % len(self.passos)
+        self.restante -= 1
+
+        self.temp = round(self.temp + dt, 1)
+        self.umid = round(self.umid + du, 1)
+
+        # Correção de deriva, em degraus do mesmo tamanho que os reais. A
+        # temperatura precisa de puxão MUITO mais fraco que a umidade: ela
+        # fica parada por horas, e uma correção que alcança um degrau a cada
+        # 25 min quebra todos os platôs.
+        self.erro_t += (base_t - self.temp) * 0.0018
+        if abs(self.erro_t) >= 0.1:
+            passo = 0.1 if self.erro_t > 0 else -0.1
+            self.temp, self.erro_t = round(self.temp + passo, 1), self.erro_t - passo
+
+        self.erro_u += (base_u - self.umid) * 0.004
+        if abs(self.erro_u) >= 1.0:
+            passo = 1.0 if self.erro_u > 0 else -1.0
+            self.umid, self.erro_u = round(self.umid + passo, 1), self.erro_u - passo
+
+        return self.temp, self.umid
+
+    def _ruido(self, quando: datetime):
+        if quando in self.reais_ruido:
+            r = self.reais_ruido[quando]
+            laeq, lamax, lamin = misturar(
+                (quando, r[0], r[1], r[2]), atividade(quando), self.media_baixo)
+            self.usados_ruido += 1
+        else:
+            a = atividade(quando)
+            janela = random.choice(self.baldes[balde_da_hora(a)])
+            laeq, lamax, lamin = misturar(janela, a, self.media_baixo)
+
+            empurrao = random.gauss(0, JITTER_JANELA)
+            laeq, lamax, lamin = laeq + empurrao, lamax + empurrao, lamin + empurrao
+
+        if quando in self.picos:
+            laeq = self.picos[quando]
+            # Fala tem pico alto sobre a média: o máximo da janela sobe junto.
+            lamax = laeq + random.uniform(5.0, 11.0)
+            lamin = laeq - random.uniform(14.0, 22.0)
+
+        return laeq, lamax, lamin
+
+    def minuto(self, quando: datetime):
+        """Temperatura e umidade em grandeza, ruído já em dBFS para gravar."""
+        temp, umid = self._ar(quando)
+        laeq, lamax, lamin = self._ruido(quando)
+
+        return (temp, umid,
+                round(laeq - OFFSET_DBFS, 2),
+                round(lamax - OFFSET_DBFS, 2),
+                round(max(lamin, 12.0) - OFFSET_DBFS, 2))
+
+
 def semear(csv_real: Path, dias: int, semente: int = 20261112):
     random.seed(semente)
 
     ar_real, ruido_real = carregar(csv_real)
-    passos = passos_reais(ar_real)
-    baldes = baldes_de_ruido(ruido_real)
 
     print(f"Arquivo real: {len(ar_real)} leituras de ar, {len(ruido_real)} janelas "
           f"de ruído, de {ar_real[0][0]:%d/%m %H:%M} a {ar_real[-1][0]:%d/%m %H:%M}")
-    media_baixo = sum(r[1] for r in baldes["baixo"]) / len(baldes["baixo"])
-
-    print(f"  baldes de ruído: alto {len(baldes['alto'])}, "
-          f"médio {len(baldes['medio'])}, baixo {len(baldes['baixo'])}")
 
     database.criar_esquema()
     conexao = database.conectar()
@@ -264,99 +382,23 @@ def semear(csv_real: Path, dias: int, semente: int = 20261112):
     ate = datetime.now(tz=SP).replace(second=0, microsecond=0)
     desde = ate - timedelta(days=dias)
 
-    reais_ar = {q: (t, u) for q, t, u in ar_real}
-    reais_ruido = {q: (a, b, c) for q, a, b, c in ruido_real}
-
-    picos = sortear_picos(desde, ate)
+    g = Gerador(ar_real, ruido_real, sortear_picos(desde, ate))
+    print(f"  baldes de ruído: alto {len(g.baldes['alto'])}, "
+          f"médio {len(g.baldes['medio'])}, baixo {len(g.baldes['baixo'])}")
 
     ar, ruido = [], []
-    temp = umid = None
-    i_passo, restante, sinal = random.randrange(len(passos)), 0, 1
-    usados_ar = usados_ruido = 0
-
-    # O puxão para a linha de base se acumula aqui e só vira movimento quando
-    # alcança um degrau inteiro. Aplicado direto no valor, ele somava um
-    # pouquinho a cada minuto e o arredondamento transformava isso em degraus
-    # que o sensor nunca deu: a umidade passava a mexer em 18% dos minutos
-    # contra 9,5% reais, e as reversões caíam pela metade.
-    erro_t = erro_u = 0.0
-
     quando = desde
     while quando < ate:
-        base_t, base_u = base_do_dia(quando)
-
-        if quando in reais_ar:
-            temp, umid = reais_ar[quando]
-            usados_ar += 1
-        else:
-            if temp is None:
-                temp, umid = base_t, base_u
-
-            # Blocos contíguos de passos reais: dentro do bloco, segue o que o
-            # sensor fez; ao fim dele, sorteia outro ponto de partida.
-            if restante <= 0:
-                i_passo = random.randrange(len(passos))
-                restante = random.randint(40, 180)
-                # Espelhar o bloco, meio a meio. Os passos reais têm deriva
-                # líquida — o arquivo é de um dia em que a sala caiu de 23,4
-                # para 21,8 °C — e reaplicá-los sempre na mesma direção faz a
-                # série afundar. Invertendo metade dos blocos, a deriva
-                # esperada vira zero e a textura fica intacta: são os mesmos
-                # degraus, as mesmas rajadas, as mesmas reversões.
-                sinal = random.choice((1, -1))
-
-            dt, du = passos[i_passo]
-            dt, du = sinal * dt, sinal * du
-            i_passo = (i_passo + 1) % len(passos)
-            restante -= 1
-
-            temp = round(temp + dt, 1)
-            umid = round(umid + du, 1)
-
-            # Correção de deriva, em degraus do mesmo tamanho que os reais.
-            # A temperatura precisa de puxão MUITO mais fraco que a umidade:
-            # ela fica parada por horas, e uma correção que alcança um degrau a
-            # cada 25 min quebra todos os platôs. Com 0,0006 ela alcança a cada
-            # três horas, que é a escala em que a sala de fato se move.
-            erro_t += (base_t - temp) * 0.0018
-            if abs(erro_t) >= 0.1:
-                passo = 0.1 if erro_t > 0 else -0.1
-                temp, erro_t = round(temp + passo, 1), erro_t - passo
-
-            erro_u += (base_u - umid) * 0.004
-            if abs(erro_u) >= 1.0:
-                passo = 1.0 if erro_u > 0 else -1.0
-                umid, erro_u = round(umid + passo, 1), erro_u - passo
-
-        ar.append((int(quando.timestamp()), temp, umid))
-
-        if quando in reais_ruido:
-            r = reais_ruido[quando]
-            laeq, lamax, lamin = misturar(
-                (quando, r[0], r[1], r[2]), atividade(quando), media_baixo)
-            usados_ruido += 1
-        else:
-            a = atividade(quando)
-            janela = random.choice(baldes[balde_da_hora(a)])
-            laeq, lamax, lamin = misturar(janela, a, media_baixo)
-
-            empurrao = random.gauss(0, JITTER_JANELA)
-            laeq, lamax, lamin = laeq + empurrao, lamax + empurrao, lamin + empurrao
-
-        if quando in picos:
-            laeq = picos[quando]
-            # Fala tem pico alto sobre a média: o máximo da janela sobe junto.
-            lamax = laeq + random.uniform(5.0, 11.0)
-            lamin = laeq - random.uniform(14.0, 22.0)
-
-        ruido.append((int(quando.timestamp()),
-                      round(laeq - 99.1, 2), round(lamax - 99.1, 2),
-                      round(max(lamin, 12.0) - 99.1, 2)))
-
+        temp, umid, laeq, lamax, lamin = g.minuto(quando)
+        ts = int(quando.timestamp())
+        ar.append((ts, temp, umid))
+        ruido.append((ts, laeq, lamax, lamin))
         quando += timedelta(minutes=1)
 
     # Teto da temperatura: desloca a série inteira, não comprime, para não
-    # achatar a textura transplantada.
+    # achatar a textura transplantada. O recuo fica guardado porque a
+    # continuação ao vivo precisa aplicar exatamente o mesmo — senão o
+    # primeiro minuto depois do semeador daria um degrau do tamanho dele.
     pico = max(x[1] for x in ar)
     recuo = round(max(0.0, pico - TEMPERATURA_MAXIMA), 1)
     ar = [(ts, round(t - recuo, 1), round(u - SECAGEM_AR, 1)) for ts, t, u in ar]
@@ -370,11 +412,16 @@ def semear(csv_real: Path, dias: int, semente: int = 20261112):
         conexao.execute(
             "INSERT INTO calibracoes (ts, referencia_dba, medido_dbfs, offset_db,"
             " minutos, janelas, observacao) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (int(desde.timestamp()), 30.0, -69.1, 99.1, 5, 5,
+            (int(desde.timestamp()), 30.0, -69.1, OFFSET_DBFS, 5, 5,
              "Medidor de referência, 09/11"))
+        conexao.execute(
+            "INSERT INTO configuracao (chave, valor, atualizado_em)"
+            " VALUES (?, ?, ?) ON CONFLICT(chave) DO UPDATE SET"
+            " valor = excluded.valor, atualizado_em = excluded.atualizado_em",
+            (CHAVE_RECUO, str(recuo), int(ate.timestamp())))
 
-    database.definir_offset_ruido(99.1)
-    return len(ar), usados_ar, usados_ruido, desde, ate
+    database.definir_offset_ruido(OFFSET_DBFS)
+    return len(ar), g.usados_ar, g.usados_ruido, desde, ate
 
 
 def main():

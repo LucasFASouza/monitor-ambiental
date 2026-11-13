@@ -25,7 +25,7 @@ INMP441  ┘
 | `teste_dht.py` | Teste isolado do sensor, sem banco e sem Flask |
 | `templates/` | As três páginas: painel, sistema e calibração |
 | `deploy/` | Units de systemd para os dois coletores e o dashboard |
-| `scripts/` | Semear histórico simulado: `semear.py` para trabalhar sem o Raspberry, `semear_demo.py` para a demonstração de escritório |
+| `scripts/` | Semear histórico simulado: `semear.py` para trabalhar sem o Raspberry, `semear_demo.py` para a demonstração de escritório, `semear_realista.py` para a transplantada e `demo_ao_vivo.py` para mantê-la respirando |
 
 São três processos independentes: o coletor de ar, o coletor de ruído e o
 dashboard. Se o Flask cair, a coleta continua. Se um coletor parar, o outro
@@ -69,8 +69,17 @@ leituras de ar e 662 janelas de ruído do dia 09/11.
 
 ```bash
 MONITOR_DB=data/demo.db python scripts/semear_realista.py
+MONITOR_DB=data/demo.db python scripts/demo_ao_vivo.py &
 MONITOR_DB=data/demo.db MONITOR_PORTA=5088 python app.py
 ```
+
+A segunda linha é o que mantém a demonstração viva. O semeador gera até o
+instante em que foi chamado e para ali; três minutos depois o painel passa a
+dizer "A coleta parou", porque é isso que ele tem de dizer quando a leitura
+mais nova tem mais de três intervalos de idade. `demo_ao_vivo.py` continua a
+mesma série com o mesmo gerador e o mesmo estado, gravando a leitura do minuto
+quando o minuto chega — não é a regra de frescor afrouxada, é a coleta não
+parando. Se ficar fora do ar, ao voltar preenche o buraco antes de retomar.
 
 Para o ar, transplantam-se os **passos** minuto a minuto, não os valores: platô,
 degrau, reversão e agrupamento vêm de graça, porque são os reais. Os blocos são
