@@ -178,10 +178,10 @@ GRANDEZAS = {
         reguas=[(60.0, "60"), (40.0, "40")],
         explicacao="Abaixo de 40 % o ar resseca a garganta e os olhos. "
                    "Acima de 60 % começa a favorecer mofo.",
-        norma="Não há norma brasileira vigente com faixa de umidade: a NR-17 "
-              "perdeu esse número na revisão de 2021 e a RE 09/2003 da ANVISA "
-              "foi revogada em 2024. Esta faixa é convergência de fontes, "
-              "não norma.",
+        norma="A faixa de 40 a 60 % está contida na de 35 a 65 % da ABNT NBR "
+              "17037:2023, que substituiu a RE 09/2003 da ANVISA, revogada em "
+              "2024. Converge com a recomendação da OSHA e com a ASHRAE 55. A "
+              "NR-17 manda controlar a umidade, mas não fixa faixa.",
     ),
     "ruido": dict(
         curto="ruído",

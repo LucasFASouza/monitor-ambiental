@@ -392,21 +392,21 @@ Nada disso é limite de insalubridade. Exposição ocupacional ao ruído é a NR
 Anexo 1, com 85 dB(A) para 8 horas, e exige medidor Tipo 1 ou 2 com certificado
 de calibração.
 
-**Umidade é o ponto fraco.** Não há número normativo vigente que tenha sido
-verificado em fonte oficial aberta:
+**Umidade** se apoia na **ABNT NBR 17037:2023**, que trata de qualidade do ar
+interior em ambientes não residenciais climatizados artificialmente e fixa a
+faixa de 35 a 65 %. Ela substituiu a RE 09/2003 da ANVISA, revogada em julho de
+2024 pela RDC 886/2024.
 
-- a NR-17 perdeu o número de umidade na revisão de 2021 — o item 17.8.4.2 manda
-  controlar a umidade, mas não diz qual faixa;
-- a RE 09/2003 da ANVISA, que indicava 40 a 65 % no verão, foi revogada em
-  julho de 2024 pela RDC 886/2024;
-- o que a substituiu é a ABNT NBR 17037, norma paga, não consultada aqui;
-- a recomendação da OSHA (20 a 60 %) não tem caráter obrigatório nem é
-  brasileira.
+A faixa adotada, 40 a 60 %, é mais estreita que a da norma de propósito: é a
+que aparece de forma consistente nas fontes como a que minimiza tanto
+proliferação biológica quanto irritação respiratória. Converge com a
+recomendação da OSHA, de 20 a 60 %, que não tem caráter obrigatório nem é
+brasileira, apoiada na ASHRAE 55.
 
-A faixa de 40 a 60 % é a que aparece de forma consistente nessas fontes como a
-que minimiza tanto proliferação biológica quanto irritação respiratória, mas
-ela é convergência, não norma. Se este projeto for usado para fundamentar
-alguma coisa, é aqui que falta checagem.
+Duas ressalvas: a NR-17 manda controlar a umidade mas não fixa faixa, tendo
+perdido o número na revisão de 2021; e a NBR 17037 trata de ambientes
+climatizados artificialmente, então num ambiente sem climatização a referência
+é menos direta.
 
 E vale lembrar ao revisar: a umidade do DHT11 tem precisão de ±5%, então
 limites mais estreitos que isso dariam uma falsa sensação de exatidão.

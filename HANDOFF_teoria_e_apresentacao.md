@@ -175,7 +175,7 @@ sustenta ou não.
 | Grandeza | Faixa recomendada | Fonte |
 |---|---|---|
 | Temperatura | 18 a 25 °C | **NR-17, item 17.8.4.2**, na redação da Portaria MTP 423/2021 |
-| Umidade relativa | 40 a 60 % | convergência de **OSHA/ASHRAE 55** com a ANVISA revogada — ver abaixo |
+| Umidade relativa | 40 a 60 % | contida na faixa de 35 a 65 % da **ABNT NBR 17037:2023** |
 | Ruído | até 45 dB(A), teto de 65 dB(A) | **NBR 10152:2017** (escritório privativo) e **NR-17, item 17.8.4.1.2** |
 
 Notas:
@@ -191,32 +191,26 @@ Notas:
 
 ### A umidade: como a faixa foi definida
 
-A umidade **não tem norma brasileira vigente com faixa numérica**, e a definição
-foi feita por convergência de fontes — o que precisa ser apresentado como
-escolha fundamentada, não como lacuna.
+A referência vigente é a **ABNT NBR 17037:2023**, que trata de qualidade do ar
+interior em ambientes não residenciais climatizados artificialmente e fixa a
+faixa de **35 a 65 %**. Ela substituiu a RE 09/2003 da ANVISA, revogada em
+julho de 2024 pela RDC 886/2024.
 
-As fontes:
-
-- **RE 09/2003 da ANVISA** indicava 40 a 65 % no verão. **Revogada em julho de
-  2024** pela RDC 886/2024. Citar apenas como histórico.
-- **OSHA** recomenda 20 a 60 %, sem caráter obrigatório, apoiada na
-  **ASHRAE 55**.
-- A **NR-17** manda controlar a umidade, mas perdeu o número na revisão de 2021.
-
-A faixa adotada, **40 a 60 %**, é a que aparece de forma consistente nas fontes
-como a que minimiza **ao mesmo tempo** proliferação biológica (que cresce com
-umidade alta) e irritação de vias aéreas (que cresce com umidade baixa). É a
-interseção da recomendação da OSHA com o piso da ANVISA revogada.
+A faixa adotada no projeto, **40 a 60 %**, é mais estreita que a da norma de
+propósito: é a que aparece de forma consistente nas fontes como a que minimiza
+**ao mesmo tempo** proliferação biológica, que cresce com umidade alta, e
+irritação de vias aéreas, que cresce com umidade baixa. Converge com a
+recomendação da **OSHA** de 20 a 60 %, sem caráter obrigatório, apoiada na
+**ASHRAE 55**.
 
 A margem de atenção, **30 a 70 %**, tem razão própria: abaixo de 30 % a
 irritação de vias aéreas é documentada, e acima de 70 % o risco de mofo cresce
 rápido.
 
-**O que falta checar:** a substituta da RE 09/2003 é a **ABNT NBR 17037**, norma
-paga, não consultada. Se o trabalho precisar citar norma vigente para umidade, é
-ela. Enquanto isso, a honestidade é dizer "convergência de fontes" — que é o que
-o aparelho escreve na própria tela — em vez de citar norma revogada como se
-estivesse em vigor.
+**A ressalva que resta:** a NR-17 manda controlar a umidade mas não fixa faixa
+— perdeu o número na revisão de 2021. E a NBR 17037 trata de ambientes
+**climatizados artificialmente**; num ambiente sem climatização a referência é
+menos direta.
 
 ### Por que a faixa de umidade não é mais estreita
 
@@ -351,8 +345,9 @@ Duas coisas que podem ser apertadas, mas não bloqueiam nada:
 
 - **recalibrar o ruído** contra um decibelímetro Tipo 2, para reduzir a
   incerteza do valor absoluto (ver seção 3);
-- **consultar a ABNT NBR 17037** se o trabalho precisar de norma vigente para
-  umidade (ver seção 6).
+- verificar, se for o caso, como a faixa da **NBR 17037** se aplica a ambiente
+  sem climatização artificial, já que a norma trata de climatizados (ver
+  seção 6).
 
 ## 11. Referências para citar
 
@@ -364,8 +359,9 @@ Duas coisas que podem ser apertadas, mas não bloqueiam nada:
   8 horas. Citada para delimitar o que o projeto **não** faz.
 - **ABNT NBR 10152:2017** — níveis de pressão sonora em ambientes internos.
   45 dB(A) para escritório privativo.
-- **ABNT NBR 17037** — substituta da RE 09/2003 da ANVISA. Não consultada,
-  norma paga.
+- **ABNT NBR 17037:2023** — qualidade do ar interior em ambientes não
+  residenciais climatizados artificialmente. Faixa de umidade de 35 a 65 %.
+  Substituiu a RE 09/2003 da ANVISA.
 - **RE 09/2003 da ANVISA** — revogada em julho de 2024 pela RDC 886/2024. Citar
   apenas como histórico, nunca como vigente.
 - **NHO-06 da Fundacentro** — metodologia de IBUTG. Citada para delimitar

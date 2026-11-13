@@ -73,7 +73,8 @@ trabalho futuro não deve inventar nenhum.
 
 Os limites de classificação têm fonte documentada em `config.py`: NR-17 item
 17.8.4.2 para temperatura, NR-17 item 17.8.4.1.2 e NBR 10152:2017 para ruído.
-A faixa de umidade é convergência de fontes, sem norma vigente verificada.
+A faixa de umidade está contida na da NBR 17037:2023, norma vigente para
+ambientes climatizados artificialmente.
 
 ## Product Principles
 

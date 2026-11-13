@@ -100,23 +100,22 @@ RUIDO_JANELA_SEGUNDOS = int(os.getenv("MONITOR_RUIDO_JANELA", "60"))
 # UMIDADE  -------------------------------------------------------------------
 #
 #   bom: 40 a 60 %
-#     Convergência de fontes, e não de norma vigente: a revogada RE 09/2003 da
-#     ANVISA indicava 40 a 65 % no verão, e a OSHA recomenda 20 a 60 % (sem
-#     caráter obrigatório, apoiada na ASHRAE 55). A faixa de 40 a 60 % é a que
-#     aparece de forma consistente como a que minimiza tanto proliferação
-#     biológica quanto irritação respiratória.
+#     Contida na faixa de 35 a 65 % da ABNT NBR 17037:2023, que é a norma
+#     vigente para qualidade do ar interior em ambientes climatizados e
+#     substituiu a RE 09/2003 da ANVISA, revogada em julho de 2024 pela RDC
+#     886/2024. Converge com a OSHA, que recomenda 20 a 60 % sem caráter
+#     obrigatório, apoiada na ASHRAE 55. A faixa adotada é mais estreita que a
+#     da norma de propósito: é a que minimiza ao mesmo tempo proliferação
+#     biológica e irritação respiratória.
 #
 #   atenção: 30 a 70 %  [margem]
 #     Abaixo de 30 % a irritação de vias aéreas é documentada; acima de 70 % o
 #     risco de mofo cresce rápido.
 #
-#   RESSALVA IMPORTANTE: esta é a grandeza com menos respaldo normativo direto.
-#   A NR-17 perdeu o número de umidade na revisão de 2021 — o item 17.8.4.2
-#   manda controlar a umidade, mas não diz qual faixa. E a RE 09/2003 da ANVISA
-#   foi revogada em julho de 2024 pela RDC 886/2024, substituída pela ABNT NBR
-#   17037, que é norma paga e não foi consultada aqui. Se algum dia este
-#   projeto for usado para fundamentar alguma coisa, é neste ponto que falta
-#   checagem.
+#   RESSALVA: a NR-17 perdeu o número de umidade na revisão de 2021 — o item
+#   17.8.4.2 manda controlar a umidade, mas não diz qual faixa. O respaldo vem
+#   da NBR 17037:2023, que trata de ambientes climatizados artificialmente; em
+#   ambiente sem climatização a referência é menos direta.
 #
 #
 # RUÍDO  ---------------------------------------------------------------------
