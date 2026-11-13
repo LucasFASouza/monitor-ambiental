@@ -25,7 +25,7 @@ INMP441  ┘
 | `teste_dht.py` | Teste isolado do sensor, sem banco e sem Flask |
 | `templates/` | As três páginas: painel, sistema e calibração |
 | `deploy/` | Units de systemd para os dois coletores e o dashboard |
-| `scripts/` | Semear histórico simulado: `semear.py` para trabalhar sem o Raspberry, `semear_demo.py` para a demonstração de escritório, `semear_realista.py` para a transplantada e `demo_ao_vivo.py` para mantê-la respirando |
+| `scripts/` | Publicação da cópia estática: `publicar.py` e `publicar.sh` |
 
 São três processos independentes: o coletor de ar, o coletor de ruído e o
 dashboard. Se o Flask cair, a coleta continua. Se um coletor parar, o outro
@@ -61,63 +61,10 @@ está no banco; isto é uma vitrine.
 Precisa de chave de deploy com escrita no GitHub e do remoto por SSH — com
 HTTPS o push pede senha e o timer trava. Teste à mão antes de habilitar.
 
-## Demonstração transplantada do sensor real
-
-`scripts/semear_realista.py` gera sete dias **transplantando** as leituras reais
-do aparelho, em vez de modelar textura. A base é uma exportação de 24 h — 704
-leituras de ar e 662 janelas de ruído do dia 09/11.
-
-```bash
-MONITOR_DB=data/demo.db python scripts/semear_realista.py
-MONITOR_DB=data/demo.db python scripts/demo_ao_vivo.py &
-MONITOR_DB=data/demo.db MONITOR_PORTA=5088 python app.py
-```
-
-A segunda linha é o que mantém a demonstração viva. O semeador gera até o
-instante em que foi chamado e para ali; três minutos depois o painel passa a
-dizer "A coleta parou", porque é isso que ele tem de dizer quando a leitura
-mais nova tem mais de três intervalos de idade. `demo_ao_vivo.py` continua a
-mesma série com o mesmo gerador e o mesmo estado, gravando a leitura do minuto
-quando o minuto chega — não é a regra de frescor afrouxada, é a coleta não
-parando. Se ficar fora do ar, ao voltar preenche o buraco antes de retomar.
-
-Para o ar, transplantam-se os **passos** minuto a minuto, não os valores: platô,
-degrau, reversão e agrupamento vêm de graça, porque são os reais. Os blocos são
-espelhados meio a meio, senão a deriva do dia de origem se acumula. O clima de
-São Paulo entra só na linha de base de cada dia.
-
-Para o ruído, transplantam-se as **janelas inteiras**, casadas por nível de
-atividade — a assimetria, a cauda e os picos isolados já vêm nelas.
-
-O trecho que o arquivo cobre entra verbatim. Madrugada e manhã não têm leitura
-de referência, porque o arquivo começa às 12h: usam as janelas mais calmas que
-existem, abatidas pelos 7 dB que separam madrugada de noite no aparelho.
-
-## Demonstração
-
-Um histórico simulado de escritório formal, para mostrar o produto sem depender
-de coleta real: ar-condicionado das 6h às 19h em 22 °C, chegada entre 8h e 10h,
-almoço entre 12h e 14h, saída por volta das 18h30. Terça e quinta cheios,
-quarta intermediária, segunda e sexta vazios; fim de semana sem ar.
-
-```bash
-MONITOR_DB=data/demo.db python scripts/semear_demo.py
-MONITOR_DB=data/demo.db MONITOR_PORTA=5088 python app.py
-```
-
-Banco e porta separados de propósito. O script se recusa a rodar se o caminho
-do banco não contiver "demo", porque os registros gerados são indistinguíveis
-dos reais depois de gravados.
-
-O tempo externo é o de Mogi das Cruzes, e a aleatoriedade não é arbitrária: a
-textura estatística — quanto o sensor segura o valor, de quanto são os degraus,
-qual o desvio do passo do LAeq — sai medida dos dados reais do aparelho. Ver
-`TEXTURA` no script.
-
 ## Rodar sem o Raspberry
 
 Tudo, menos a leitura física do sensor, roda em qualquer máquina. É para isso
-que existe o sensor simulado.
+que existe o sensor simulado, em `sensor.py`.
 
 ```bash
 python3 -m venv .venv
@@ -125,18 +72,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Gere um histórico de dois dias e suba o dashboard:
-
-```bash
-python scripts/semear.py --horas 48
-python app.py
-```
-
-Abra <http://localhost:5000>. Para ver a coleta funcionando ao vivo:
+Suba o coletor com o sensor simulado e o dashboard ao lado:
 
 ```bash
 MONITOR_SENSOR=simulado MONITOR_INTERVALO=5 python collector.py
+python app.py
 ```
+
+Abra <http://localhost:5000>. O histórico cresce enquanto o coletor roda; em
+poucos minutos já há curva para ver.
+
+Os geradores de histórico simulado que foram usados para montar a
+demonstração do trabalho não estão aqui: ficaram fora do repositório de
+propósito, porque o que eles produzem é indistinguível de leitura de sensor
+depois de gravado, e código de fabricar dado não divide pasta com código de
+medir.
 
 ## Rodar no Raspberry Pi
 

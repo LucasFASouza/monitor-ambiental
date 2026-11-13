@@ -11,6 +11,15 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 
+# O aparato de demonstração fica só na máquina de quem apresenta. São os
+# semeadores de histórico simulado e o processo que mantém a demonstração
+# viva. Ficam de fora porque o que eles produzem é indistinguível de leitura
+# de sensor depois de gravado: o banco já era barrado acima, e manter aqui o
+# código que o fabrica é convite a alguém gerar uma semana de dados e
+# apresentá-la como medição.
+scripts/semear*.py
+scripts/demo_ao_vivo.py
+
 # Sistema
 .DS_Store
 
