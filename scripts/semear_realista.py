@@ -78,6 +78,24 @@ TEMPERATURA_MAXIMA = 24.0
 # e devolve a sala mais seca. Pontos de umidade a descontar.
 SECAGEM_AR = 7.0
 
+# Gente chegando, saindo para o almoço e indo embora, falando alto perto do
+# sensor. São isolados e não acontecem todo dia, que é como conversa funciona.
+PICOS_HORAS = (9.0, 12.0, 18.0)
+PICO_CHANCE = 0.55            # chance de haver pico naquele horário, por dia
+PICO_DISPERSAO = 25           # minutos de folga em torno do horário
+PICO_DURACAO = (1, 3)         # minutos
+PICO_NIVEL = (57.0, 68.0)     # LAeq do pico, em dB(A)
+
+# O arquivo real tem poucas janelas muito altas, e sorteá-las com reposição ao
+# longo de sete dias fazia o MESMO valor aparecer dez vezes — nada denuncia
+# mais uma série montada. As altas saem do balde e passam a vir dos picos
+# agendados, que é onde elas fazem sentido.
+TETO_DO_BALDE = 50.0
+
+# E cada janela transplantada ganha um empurrãozinho, para duas cópias da mesma
+# janela não saírem iguais ao décimo de decibel.
+JITTER_JANELA = 0.8
+
 
 def carregar(caminho: Path):
     """Lê o arquivo real e devolve as séries de ar e as janelas de ruído."""
@@ -103,10 +121,11 @@ def passos_reais(serie):
 
 def baldes_de_ruido(ruido):
     """O arquivo cobre tarde cheia e noite calma; vira três níveis."""
+    dentro = [r for r in ruido if r[1] <= TETO_DO_BALDE]
     return {
-        "alto": [r for r in ruido if 12 <= r[0].hour < 18],
-        "medio": [r for r in ruido if 18 <= r[0].hour < 20],
-        "baixo": [r for r in ruido if r[0].hour >= 20],
+        "alto": [r for r in dentro if 12 <= r[0].hour < 18],
+        "medio": [r for r in dentro if 18 <= r[0].hour < 20],
+        "baixo": [r for r in dentro if r[0].hour >= 20],
     }
 
 
@@ -176,6 +195,34 @@ def misturar(janela, a: float, media_baixo: float):
     return alvo, alvo + (lamax - laeq) * escala, alvo - (laeq - lamin) * escala
 
 
+def sortear_picos(desde: datetime, ate: datetime) -> dict:
+    """Minutos em que alguém falou alto perto do sensor.
+
+    Só em dia útil, só em alguns dias, e curtos: um pico que dura meia hora não
+    é conversa, é obra.
+    """
+    picos = {}
+    dia = desde.replace(hour=0, minute=0)
+
+    while dia < ate + timedelta(days=1):
+        if dia.weekday() < 5:
+            for hora in PICOS_HORAS:
+                if random.random() > PICO_CHANCE:
+                    continue
+
+                inicio = dia + timedelta(
+                    hours=hora, minutes=random.randint(-PICO_DISPERSAO, PICO_DISPERSAO))
+                nivel = random.uniform(*PICO_NIVEL)
+
+                for k in range(random.randint(*PICO_DURACAO)):
+                    # O pico decai ao longo dos minutos: a conversa se afasta.
+                    picos[inicio + timedelta(minutes=k)] = nivel - k * random.uniform(2, 5)
+
+        dia += timedelta(days=1)
+
+    return picos
+
+
 def base_do_dia(quando: datetime):
     """Linha de base de temperatura e umidade, vinda do clima do dia."""
     def medio(dia):
@@ -215,6 +262,8 @@ def semear(csv_real: Path, dias: int, semente: int = 20261112):
 
     reais_ar = {q: (t, u) for q, t, u in ar_real}
     reais_ruido = {q: (a, b, c) for q, a, b, c in ruido_real}
+
+    picos = sortear_picos(desde, ate)
 
     ar, ruido = [], []
     temp = umid = None
@@ -286,6 +335,15 @@ def semear(csv_real: Path, dias: int, semente: int = 20261112):
             a = atividade(quando)
             janela = random.choice(baldes[balde_da_hora(a)])
             laeq, lamax, lamin = misturar(janela, a, media_baixo)
+
+            empurrao = random.gauss(0, JITTER_JANELA)
+            laeq, lamax, lamin = laeq + empurrao, lamax + empurrao, lamin + empurrao
+
+        if quando in picos:
+            laeq = picos[quando]
+            # Fala tem pico alto sobre a média: o máximo da janela sobe junto.
+            lamax = laeq + random.uniform(5.0, 11.0)
+            lamin = laeq - random.uniform(14.0, 22.0)
 
         ruido.append((int(quando.timestamp()),
                       round(laeq - 99.1, 2), round(lamax - 99.1, 2),
