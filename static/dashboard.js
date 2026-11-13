@@ -128,8 +128,13 @@
       type: "line",
       data: {
         datasets: [
-          // O envelope são duas séries sem traço, preenchidas uma até a outra.
-          { data: maximos, borderWidth: 0, pointRadius: 0, fill: "+1",
+          // O envelope: duas séries preenchidas uma até a outra. A de cima
+          // ganha traço fino porque é onde moram os picos, e pico de ruído
+          // dura minutos — num recorte de sete dias isso é um balde só, uma
+          // lasca de preenchimento claro que some contra o fundo. Com o
+          // contorno, a mesma lasca vira uma agulha que se vê.
+          { data: maximos, borderColor: "rgba(23,32,42,.3)", borderWidth: 1,
+            pointRadius: 0, fill: "+1",
             backgroundColor: "rgba(23,32,42,.15)", tension: 0.25 },
           { data: minimos, borderWidth: 0, pointRadius: 0, fill: false, tension: 0.25 },
           { data: medias, borderColor: cor("--tinta"), borderWidth: 1.9,

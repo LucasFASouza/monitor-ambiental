@@ -84,7 +84,11 @@ PICOS_HORAS = (9.0, 12.0, 18.0)
 PICO_CHANCE = 0.55            # chance de haver pico naquele horário, por dia
 PICO_DISPERSAO = 25           # minutos de folga em torno do horário
 PICO_DURACAO = (1, 3)         # minutos
-PICO_NIVEL = (57.0, 68.0)     # LAeq do pico, em dB(A)
+PICO_NIVEL = (60.0, 74.0)     # LAeq do pico, em dB(A): a maioria cruza os 65
+                              # da NR-17, que é o ponto da demonstração. Grupo
+                              # conversando alto a um ou dois metros do sensor
+                              # fica nessa casa; abaixo de 60 a fala não se
+                              # destaca do escritório trabalhando.
 
 # O arquivo real tem poucas janelas muito altas, e sorteá-las com reposição ao
 # longo de sete dias fazia o MESMO valor aparecer dez vezes — nada denuncia

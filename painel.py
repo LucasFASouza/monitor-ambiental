@@ -98,14 +98,20 @@ def _janela(grandeza: str, valores):
 
     ymin, ymax = min(limites), max(limites)
 
-    # O vermelho não tem fim; dá a ele a largura da banda de atenção vizinha.
+    # O vermelho não tem fim, então a janela precisa escolher onde cortá-lo.
+    # Uma lasca basta para ele se ler como faixa: com a largura cheia da banda
+    # de atenção vizinha, um pico de 71 dB(A) abria a janela até 85 e sobravam
+    # catorze decibéis de vermelho vazio no topo, espremendo o dia e a noite
+    # na metade de baixo do desenho. Quem garante que o dado cabe é o bloco
+    # seguinte, que estende a janela quando precisa.
     if "ruim" in mostrar:
         atencoes = [ate - de for de, ate, n in bandas
                     if n == "atencao" and float("-inf") < de and ate < float("inf")]
         folga = (sum(atencoes) / len(atencoes)) if atencoes else (ymax - ymin) * 0.2
+        lasca = folga / 3
         if any(n == "ruim" and ate != float("inf") for de, ate, n in bandas):
-            ymin -= folga
-        ymax += folga
+            ymin -= lasca
+        ymax += lasca
 
     # Primeiro a janela passa a conter os dados, depois o piso é calculado em
     # cima do topo já definitivo. Na ordem inversa, uma série acima do topo das
@@ -118,9 +124,11 @@ def _janela(grandeza: str, valores):
 
     # Quando o piso da faixa boa é zero, ele é artificial: a grandeza só tem
     # teto. Mostrar de zero para cima deixaria metade do gráfico vazia, então
-    # a janela começa perto do dado.
+    # a janela começa perto do dado — mas nunca abaixo do piso, porque a folga
+    # é proporcional ao topo e um topo alto a empurrava para baixo de zero.
+    # Uma calha de ruído marcada com "-2 dB(A)" é uma grandeza que não existe.
     if bom[0] <= 0 and valores:
-        ymin = min(valores) - (ymax - min(valores)) * 0.12
+        ymin = max(bom[0], min(valores) - (ymax - min(valores)) * 0.12)
 
     # Sem o vermelho, a janela não passa das bordas do amarelo. A margem acima
     # existe para garantir que o dado caiba; quando a série só tocou o amarelo
@@ -204,6 +212,12 @@ GRANDEZAS = {
 }
 
 
+# Quantos baldes o gráfico desenha. Vive aqui porque duas coisas dependem do
+# mesmo número: a redução feita em Python, para o ar, e a pedida ao banco, para
+# o ruído. Separá-los fazia o ruído ser reduzido duas vezes.
+PONTOS_DO_GRAFICO = 96
+
+
 def agregar(pares, alvo):
     """Reduz a série a `alvo` baldes, cada um com instante, média, mínimo e máximo.
 
@@ -215,8 +229,12 @@ def agregar(pares, alvo):
     que era.
 
     Amostra crua em centenas de pontos vira faixa peluda e ilegível; média
-    sozinha apagaria o pico, que é justamente o que importa em ruído. Por isso
-    cada balde carrega os três.
+    sozinha apagaria o extremo. Por isso cada balde carrega os três.
+
+    Serve ao ar. O ruído não passa por aqui: decibel não se soma por média
+    aritmética, e o banco já devolve os baldes com média energética e com os
+    extremos verdadeiros — tirar máximo de valores que já eram médias é o que
+    sumia com os picos.
     """
     if not pares:
         return []
@@ -353,7 +371,9 @@ def _ultimas(rotulo: str) -> str:
     return "nas últimas" if rotulo.rstrip().endswith(("hora", "horas", "h")) else "nos últimos"
 
 
-def _resumo_da_serie(valores: list[float], periodo: str, d: dict) -> str:
+def _resumo_da_serie(
+    valores: list[float], quantas: int, periodo: str, d: dict
+) -> str:
     """O que o gráfico mostra, em texto.
 
     Sem média: para ruído a média aritmética de decibéis mente, e dizer um
@@ -363,6 +383,10 @@ def _resumo_da_serie(valores: list[float], periodo: str, d: dict) -> str:
     O período chega pronto, com o artigo já concordando. Vem do rótulo do
     filtro e não das marcas do eixo: em 24 horas a primeira e a última caem na
     mesma hora do relógio, e "de 18h27 a 18h27" não informa nada.
+
+    `quantas` vem de fora porque nem sempre é o tamanho de `valores`: no ruído
+    os extremos chegam já por balde, e dizer "192 leituras" quando foram dez
+    mil é dar um número errado onde não custava nada dar o certo.
     """
     if not valores:
         return f"Sem leituras {periodo}."
@@ -371,7 +395,6 @@ def _resumo_da_serie(valores: list[float], periodo: str, d: dict) -> str:
     menor = f"{min(valores):.{casas}f}".replace(".", ",")
     maior = f"{max(valores):.{casas}f}".replace(".", ",")
 
-    quantas = len(valores)
     plural = "leitura" if quantas == 1 else "leituras"
 
     return (
@@ -427,7 +450,19 @@ def montar(horas: int = 24) -> dict:
     ruido = database.ultima_leitura_ruido()
 
     serie_ar = database.historico(desde, ate, max_pontos=600)
-    serie_ruido = database.historico_ruido(desde, ate, max_pontos=600)
+    # O ruído sai do banco já no número de baldes que vai ser desenhado, e não
+    # em 600 para depois cair para 96. Reduzir duas vezes apagava o pico: a
+    # primeira passagem somava energia em janelas de minutos e o minuto alto
+    # virava média da janela; a segunda tomava o "máximo" de valores que já
+    # eram médias. Numa semana, um minuto de 71,2 dB(A) chegava ao desenho
+    # como 59,5 — abaixo do teto da faixa de atenção, de modo que a faixa
+    # vermelha nunca entrava em cena e o pico não existia em tela nenhuma.
+    #
+    # Para temperatura e umidade os 600 continuam: ali a média de uma janela
+    # de poucos minutos é fiel, porque a grandeza se move de um décimo em um
+    # décimo. Decibel não.
+    serie_ruido = database.historico_ruido(
+        desde, ate, max_pontos=PONTOS_DO_GRAFICO)
 
     # Idade por sensor. Antes havia uma só, derivada de leituras do ar, e o
     # bloco de ruído não tinha verificação nenhuma: um valor de qualquer idade
@@ -462,6 +497,17 @@ def montar(horas: int = 24) -> dict:
         "ruido": [(l["ts"], l["laeq"]) for l in serie_ruido],
     }
 
+    # Baldes que já vêm prontos do banco, com os extremos verdadeiros do
+    # período em vez de extremos de médias. Quem está aqui não passa por
+    # `agregar`.
+    prontos = {
+        "ruido": (
+            [(l["ts"], l["laeq"], l["laeq_vale"], l["laeq_pico"])
+             for l in serie_ruido],
+            sum(l["janelas"] for l in serie_ruido),
+        ),
+    }
+
     # O rótulo do filtro quando o período é um dos oferecidos; a duração por
     # extenso quando alguém pede ?horas=N arbitrário. Com o artigo concordando:
     # "nas últimas 24 horas", mas "nos últimos 7 dias".
@@ -484,17 +530,28 @@ def montar(horas: int = 24) -> dict:
         if nivel and fresco:
             niveis.append(nivel)
 
-        valores = [v for _, v in series[chave]]
-        janela_min, janela_max = _janela(chave, valores)
+        pronto = prontos.get(chave)
+        if pronto is None:
+            pontos = agregar(series[chave], PONTOS_DO_GRAFICO)
+            valores = [v for _, v in series[chave]]
+            quantas = len(valores)
+        else:
+            pontos, quantas = pronto
+            # A janela vertical e o resumo falam do período inteiro, não do
+            # traço do meio. Com os baldes prontos, isso são os extremos de
+            # cada um: é o maior deles que faz a faixa vermelha aparecer, e
+            # era exatamente ele que vinha sendo descartado aqui.
+            valores = [v for _t, _m, vale, pico in pontos for v in (vale, pico)]
 
-        pontos = agregar(series[chave], 96)
+        janela_min, janela_max = _janela(chave, valores)
 
         blocos.append({
             "chave": chave,
             # Alternativa de texto do gráfico. O canvas anunciava como imagem
             # com rótulo e nada mais: para quem usa leitor de tela, o histórico
             # — que é o produto — era inaudível.
-            "resumo_serie": _resumo_da_serie(valores, periodo_por_extenso, d),
+            "resumo_serie": _resumo_da_serie(
+                valores, quantas, periodo_por_extenso, d),
             "nome": d["nome"],
             "curto": d["curto"],
             "artigo": d["artigo"],

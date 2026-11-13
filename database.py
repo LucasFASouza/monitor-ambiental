@@ -276,8 +276,25 @@ def historico_ruido(
 ) -> list[dict]:
     """Como `historico`, mas somando energia ao reduzir os pontos.
 
-    O máximo e o mínimo de cada faixa são o maior e o menor de verdade do
-    período, não médias: é isso que mostra os picos que a média esconde.
+    Decibel é escala logarítmica: a média aritmética de dB mente, e por isso
+    o traço do meio de cada faixa é média energética.
+
+    Mas média energética de um minuto alto com muitos minutos baixos ainda
+    puxa o alto para perto do fundo — um minuto de 71 dB(A) entre dezesseis de
+    42 sai em 52. Por isso cada faixa carrega também os extremos verdadeiros,
+    e são quatro, não dois:
+
+    - `laeq_pico` e `laeq_vale`, o maior e o menor LAeq de um minuto dentro da
+      faixa. É o que o gráfico desenha como banda, porque é da mesma natureza
+      do traço do meio: minutos, comparáveis com o limite da norma, que também
+      é sobre nível contínuo equivalente.
+    - `lamax` e `lamin`, o pico e o vale instantâneos medidos dentro dos
+      minutos. Servem para a ficha de calibração e para diagnóstico; como
+      banda do gráfico exagerariam, porque um estalo de um décimo de segundo
+      não é exposição.
+
+    `janelas` é quantas leituras de minuto entraram na faixa, para quem
+    precisa dizer quantas medidas o desenho resume.
     """
     if offset is None:
         offset = offset_ruido()
@@ -290,14 +307,17 @@ def historico_ruido(
             """
             SELECT CAST(AVG(ts) AS INTEGER)            AS ts,
                    media_energetica(laeq_dbfs) + ?      AS laeq,
+                   ROUND(MAX(laeq_dbfs) + ?, 1)         AS laeq_pico,
+                   ROUND(MIN(laeq_dbfs) + ?, 1)         AS laeq_vale,
                    ROUND(MAX(lamax_dbfs) + ?, 1)        AS lamax,
-                   ROUND(MIN(lamin_dbfs) + ?, 1)        AS lamin
+                   ROUND(MIN(lamin_dbfs) + ?, 1)        AS lamin,
+                   COUNT(*)                            AS janelas
               FROM leituras_ruido
              WHERE ts BETWEEN ? AND ?
           GROUP BY ts / ?
           ORDER BY ts
             """,
-            (offset, offset, offset, desde, ate, faixa),
+            (offset, offset, offset, offset, offset, desde, ate, faixa),
         ).fetchall()
 
     return [dict(linha) for linha in linhas]
